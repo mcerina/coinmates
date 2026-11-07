@@ -61,7 +61,13 @@ protected:
 	// engine_mode_write() method
 	virtual void ymfm_sync_mode_write(uint8_t data) override
 	{
-		machine().scheduler().synchronize(timer_expired_delegate(FUNC(ym_generic_device::fm_mode_write), this), data);
+		// like synchronize(), but with a permanent timer and a saved queue:
+		// a temporary timer would make the state unsaveable until it fires
+		if (m_mode_pending == std::size(m_mode_data))
+			fm_mode_write(0);
+		m_mode_data[m_mode_pending] = data;
+		if (m_mode_pending++ == 0)
+			m_mode_timer->adjust(attotime::zero);
 	}
 
 	// the chip implementation calls this when the chip's status has changed,
@@ -139,18 +145,32 @@ protected:
 		for (int tnum = 0; tnum < 2; tnum++)
 			m_timer[tnum] = timer_alloc(FUNC(ym_generic_device::fm_timer_handler), this);
 
+		m_mode_timer = timer_alloc(FUNC(ym_generic_device::fm_mode_write), this);
+
 		// remember the busy end time
 		save_item(NAME(m_busy_end));
+		save_item(NAME(m_mode_pending));
+		save_item(NAME(m_mode_data));
 	}
 
 	// timer callbacks
-	void fm_mode_write(s32 param) { m_engine->engine_mode_write(param); }
+	void fm_mode_write(s32 param)
+	{
+		// the timers of synchronize() would all fire now, in write order
+		const int count = m_mode_pending;
+		m_mode_pending = 0;
+		for (int i = 0; i < count; i++)
+			m_engine->engine_mode_write(m_mode_data[i]);
+	}
 	void fm_check_interrupts(s32 param) { m_engine->engine_check_interrupts(); }
 	void fm_timer_handler(s32 param) { m_engine->engine_timer_expired(param); }
 
 	// internal state
 	attotime m_busy_end;                 // busy end time
 	emu_timer *m_timer[2];               // two timers
+	emu_timer *m_mode_timer;             // applies the mode register writes
+	uint8_t m_mode_pending = 0;          // mode writes not applied yet
+	uint8_t m_mode_data[8]{};            // their values
 	devcb_write_line m_update_irq;       // IRQ update callback
 	devcb_read8::array<2> m_io_read;     // up to 2 input port handlers
 	devcb_write8::array<2> m_io_write;   // up to 2 output port handlers
