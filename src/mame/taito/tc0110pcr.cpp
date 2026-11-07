@@ -45,6 +45,9 @@ void tc0110pcr_device::device_start()
 
 	save_pointer(NAME(m_ram), TC0110PCR_RAM_SIZE);
 	save_item(NAME(m_addr));
+
+	// the pens follow the palette RAM, as after a load
+	restore_colors();
 }
 
 //-------------------------------------------------
