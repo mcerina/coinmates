@@ -75,6 +75,17 @@ void ds2404_device::device_start()
 
 	m_tick_timer = timer_alloc(FUNC(ds2404_device::timer_tick), this);
 	m_tick_timer->adjust(attotime::from_hz(256), 0, attotime::from_hz(256));
+
+	save_item(NAME(m_address));
+	save_item(NAME(m_offset));
+	save_item(NAME(m_end_offset));
+	save_item(NAME(m_a1));
+	save_item(NAME(m_a2));
+	save_item(NAME(m_sram));
+	save_item(NAME(m_ram));
+	save_item(NAME(m_rtc));
+	save_item(NAME(m_state));
+	save_item(NAME(m_state_ptr));
 }
 
 

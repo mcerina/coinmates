@@ -55,7 +55,7 @@ private:
 	uint8_t readmem();
 	void writemem(uint8_t value);
 
-	enum STATE
+	enum STATE : u8
 	{
 		STATE_IDLE = 1,              /* waiting for ROM command, in 1-wire mode */
 		STATE_COMMAND,               /* waiting for memory command */
@@ -84,7 +84,7 @@ private:
 	uint8_t m_sram[512];  /* 4096 bits */
 	uint8_t m_ram[32];    /* scratchpad ram, 256 bits */
 	uint8_t m_rtc[5];     /* 40-bit RTC counter */
-	STATE m_state[8];
+	u8 m_state[8];        // STATE values, as u8 for the save state
 	int m_state_ptr;
 };
 
