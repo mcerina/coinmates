@@ -974,6 +974,11 @@ void spu_device::device_start()
 	init_stream();
 
 	cache=std::make_unique<sample_cache * []>(m_counter_size>>3);
+	std::fill_n(cache.get(), m_counter_size>>3, nullptr);
+
+	// allocated once: the first two are saved
+	for (auto & elem : output_buf)
+		elem=std::make_unique<unsigned char []>(output_buffer_size);
 
 	// register save state stuff
 	save_item(NAME(m_counter_word_next));
@@ -985,7 +990,6 @@ void spu_device::device_start()
 	save_item(NAME(m_decoded_data_size));
 	save_item(NAME(m_fifo));
 	save_item(NAME(m_fifo_ptr));
-	save_item(NAME(m_packet));
 	save_item(NAME(m_voice_active));
 	save_item(NAME(taddr));
 
@@ -1014,6 +1018,48 @@ void spu_device::device_start()
 	save_item(NAME(cdda_buffer->num_sectors));
 	save_item(NAME(cdda_buffer->buffer_size));
 	save_item(NAME(cdda_buffer->buffer));
+
+	save_item(NAME(dirty_flags));
+	save_item(NAME(noise_t));
+	save_item(NAME(noise_cur));
+	save_item(NAME(noise_seed));
+	save_pointer(NAME(output_buf[0]), output_buffer_size);
+	save_pointer(NAME(output_buf[1]), output_buffer_size);
+	save_item(NAME(output_head));
+	save_item(NAME(output_tail));
+	save_item(NAME(output_size));
+
+	save_item(NAME(m_sv_cache_count));
+	save_item(NAME(m_sv_cache_start));
+	save_item(NAME(m_sv_play_start));
+	save_item(NAME(m_sv_play_index));
+	save_item(NAME(m_sv_loop_start));
+	save_item(NAME(m_sv_loop_index));
+	save_item(NAME(m_sv_loopcache));
+	save_item(NAME(m_sv_loopcache_len));
+	save_item(NAME(m_sv_loopcache_data));
+
+	// the voices: the cache pointers are saved as addresses by device_pre_save
+	save_pointer(STRUCT_MEMBER(voice, dptr), 24);
+	save_pointer(STRUCT_MEMBER(voice, lcptr), 24);
+	save_pointer(STRUCT_MEMBER(voice, env_state), 24);
+	save_pointer(STRUCT_MEMBER(voice, env_ar), 24);
+	save_pointer(STRUCT_MEMBER(voice, env_dr), 24);
+	save_pointer(STRUCT_MEMBER(voice, env_sr), 24);
+	save_pointer(STRUCT_MEMBER(voice, env_rr), 24);
+	save_pointer(STRUCT_MEMBER(voice, env_sl), 24);
+	save_pointer(STRUCT_MEMBER(voice, env_level), 24);
+	save_pointer(STRUCT_MEMBER(voice, env_delta), 24);
+	save_pointer(STRUCT_MEMBER(voice, sweep_vol), 24);
+	save_pointer(STRUCT_MEMBER(voice, sweep_rate), 24);
+	save_pointer(STRUCT_MEMBER(voice, pitch), 24);
+	save_pointer(STRUCT_MEMBER(voice, samplestoend), 24);
+	save_pointer(STRUCT_MEMBER(voice, samplestoirq), 24);
+	save_pointer(STRUCT_MEMBER(voice, envsamples), 24);
+	save_pointer(STRUCT_MEMBER(voice, hitirq), 24);
+	save_pointer(STRUCT_MEMBER(voice, inloopcache), 24);
+	save_pointer(STRUCT_MEMBER(voice, forceloop), 24);
+	save_pointer(STRUCT_MEMBER(voice, keyontime), 24);
 }
 
 void spu_device::device_reset()
@@ -1052,7 +1098,7 @@ void spu_device::device_reset()
 	update_ram_ctrl();
 
 	for (auto & elem : output_buf)
-		elem=std::make_unique<unsigned char []>(output_buffer_size);
+		std::fill_n(elem.get(), output_buffer_size, 0);
 	output_head=output_tail=output_size=0;
 
 	noise_t=0;
@@ -1060,29 +1106,99 @@ void spu_device::device_reset()
 	noise_cur=shift_register15(noise_seed)?0x7fff:0x8000;
 }
 
-void spu_device::device_post_load()
+// a voice's position is saved as the start of its block and an index in it; a
+// block invalidated and not updated yet then comes back decoded from the RAM of
+// the moment (no voice is ever on one at a frame end in the sets tested, and the
+// desync check would catch it)
+void spu_device::save_cache_pointer(const cache_pointer &cp, uint32_t &start, uint32_t &index)
 {
-	// invalidate the SPURAM cache
-	invalidate_cache(0, m_counter_size);
-	flush_output_buffer();
-
-	// mark everything dirty
-	dirty_flags = -1;
-
-	// kill and reallocate reverb to avoid artifacts
-	delete rev;
-	rev = new reverb(44100);
-
-	// and do some update processing
-	update_reverb();
-	update_key();
-	update_voice_state();
-	update_irq_event();
+	start=cp.cache ? cp.cache->start : ~0U;
+	index=cp.cache ? cp.ptr-cp.cache->data.get() : 0;
 }
 
-//
-//
-//
+void spu_device::load_cache_pointer(cache_pointer &cp, uint32_t start, uint32_t index)
+{
+	cp.reset();
+	if (start>=m_counter_size)
+		return;
+	translate_sample_addr(start, &cp);
+	cp.ptr=cp.cache->data.get()+std::min<std::ptrdiff_t>(index, cp.cache->dend-cp.cache->data.get());
+}
+
+void spu_device::device_pre_save()
+{
+	// the cache directory holds disjoint blocks, each rebuilt from its start
+	m_sv_cache_count=0;
+	const sample_cache *last=nullptr;
+	for (unsigned int i=0; i<(m_counter_size>>3); i++)
+	{
+		const sample_cache *sc=cache[i];
+		if (sc && sc!=last)
+		{
+			if (m_sv_cache_count<SAVED_CACHES)
+				m_sv_cache_start[m_sv_cache_count++]=sc->start;
+			else
+				logerror("too many sample cache blocks to save\n");
+			last=sc;
+		}
+	}
+	std::fill(std::begin(m_sv_cache_start)+m_sv_cache_count, std::end(m_sv_cache_start), 0);
+
+	for (int v=0; v<24; v++)
+	{
+		const voiceinfo &vi=voice[v];
+		save_cache_pointer(vi.play, m_sv_play_start[v], m_sv_play_index[v]);
+		save_cache_pointer(vi.loop, m_sv_loop_start[v], m_sv_loop_index[v]);
+		if (vi.loop && vi.loop_cache)
+		{
+			m_sv_loopcache[v][0]=vi.loop_cache->loopend;
+			m_sv_loopcache[v][1]=vi.loop_cache->loopstart;
+			m_sv_loopcache_len[v]=vi.loop_cache->len;
+			std::copy_n(vi.loop_cache->data, num_loop_cache_samples, m_sv_loopcache_data[v]);
+		}
+		else
+		{
+			m_sv_loopcache[v][0]=m_sv_loopcache[v][1]=~0U;
+			m_sv_loopcache_len[v]=0;
+			std::fill_n(m_sv_loopcache_data[v], num_loop_cache_samples, 0);
+		}
+	}
+}
+
+void spu_device::device_post_load()
+{
+	// rebuild the SPURAM cache as it was
+	invalidate_cache(0, m_counter_size);
+	for (unsigned int i=0; i<m_sv_cache_count && i<SAVED_CACHES; i++)
+		if (m_sv_cache_start[i]<m_counter_size)
+			get_sample_cache(m_sv_cache_start[i]);
+
+	// then the voices, pointing into it
+	for (int v=0; v<24; v++)
+	{
+		voiceinfo &vi=voice[v];
+		load_cache_pointer(vi.play, m_sv_play_start[v], m_sv_play_index[v]);
+		load_cache_pointer(vi.loop, m_sv_loop_start[v], m_sv_loop_index[v]);
+		vi.loop_cache=nullptr;
+		if (vi.loop && m_sv_loopcache[v][0]!=~0U)
+		{
+			// its samples were decoded from the end of a block that may be gone
+			vi.loop_cache=get_loop_cache(vi.loop.cache, m_sv_loopcache[v][0], vi.loop.cache, m_sv_loopcache[v][1]);
+			vi.loop_cache->len=m_sv_loopcache_len[v];
+			std::copy_n(m_sv_loopcache_data[v], num_loop_cache_samples, vi.loop_cache->data);
+		}
+	}
+
+	// the reverb delay lines are not saved: they only shape the sound output
+	// (sound_stream_update), not the samples saved in output_buf
+	delete rev;
+	rev = new reverb(44100);
+	const unsigned int dirty=dirty_flags;
+	dirty_flags|=dirtyflag_reverb;
+	update_reverb();
+	dirty_flags=dirty;
+}
+
 void spu_device::device_stop()
 {
 	for (auto & elem : output_buf)

@@ -35,6 +35,7 @@ protected:
 	// device-level overrides
 	virtual void device_start() override ATTR_COLD;
 	virtual void device_reset() override ATTR_COLD;
+	virtual void device_pre_save() override;
 	virtual void device_post_load() override;
 	virtual void device_stop() override ATTR_COLD;
 
@@ -83,6 +84,18 @@ protected:
 	unsigned int cur_frame_sample;
 	unsigned int cur_generate_sample;
 	unsigned int dirty_flags;
+
+	// save state of the voices and of the sample cache: the live structures
+	// point into blocks of decoded samples, so they are saved by address and
+	// rebuilt on load (the CPU sees the voices through curvol, ENDX and IRQs)
+	static constexpr unsigned SAVED_CACHES = 4096;
+	uint32_t m_sv_cache_count;
+	uint32_t m_sv_cache_start[SAVED_CACHES];
+	uint32_t m_sv_play_start[24], m_sv_play_index[24];
+	uint32_t m_sv_loop_start[24], m_sv_loop_index[24];
+	uint32_t m_sv_loopcache[24][2];  // loop end and start, ~0 if none
+	uint32_t m_sv_loopcache_len[24];
+	int16_t m_sv_loopcache_data[24][4*28];
 
 	signed short xa_last[4];
 	bool status_enabled, xa_playing, cdda_playing;
@@ -206,6 +219,8 @@ protected:
 
 	bool translate_sample_addr(const unsigned int addr, cache_pointer *cp);
 	sample_cache *get_sample_cache(const unsigned int addr);
+	void save_cache_pointer(const cache_pointer &cp, uint32_t &start, uint32_t &index);
+	void load_cache_pointer(cache_pointer &cp, uint32_t start, uint32_t index);
 	void flush_cache(sample_cache *sc, const unsigned int istart, const unsigned int iend);
 	void invalidate_cache(const unsigned int st, const unsigned int en);
 
