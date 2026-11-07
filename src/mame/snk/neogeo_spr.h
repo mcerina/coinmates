@@ -29,6 +29,7 @@ public:
 
 	virtual void optimize_sprite_data();
 	virtual void set_optimized_sprite_data(u8* sprdata, u32 mask);
+	virtual void reset_sprite_data() { optimize_sprite_data(); }
 
 	void draw_fixed_layer(bitmap_rgb32 &bitmap, int scanline);
 	void draw_sprites(bitmap_rgb32 &bitmap, int scanline);
@@ -129,11 +130,16 @@ public:
 	neosprite_optimized_device(const machine_config &mconfig, const char *tag, device_t *owner, u32 clock = 0);
 	virtual void optimize_sprite_data() override;
 	virtual void set_optimized_sprite_data(u8* sprdata, u32 mask) override;
+	virtual void reset_sprite_data() override;
 	virtual void draw_pixel(int romaddr, u32* dst, const pen_t *line_pens) override;
 	std::vector<u8> m_sprite_gfx;
 	u8* m_spritegfx8;
 
 private:
+	const u8 *m_optimized_region = nullptr; // what m_sprite_gfx was converted from
+	u32 m_optimized_size = 0;
+	u32 m_optimized_mask = 0;
+
 	u32 optimize_helper(std::vector<u8> &spritegfx, u8* region_sprites, u32 region_sprites_size);
 };
 

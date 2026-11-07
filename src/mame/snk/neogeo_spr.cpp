@@ -60,7 +60,7 @@ void neosprite_base_device::device_start()
 void neosprite_base_device::device_reset()
 {
 	//m_sprite_gfx_address_mask = 0;
-	optimize_sprite_data();
+	reset_sprite_data();
 
 	start_sprite_line_timer();
 	start_auto_animation_timer();
@@ -698,7 +698,19 @@ u32 neosprite_optimized_device::optimize_helper(std::vector<u8> &spritegfx, u8* 
 
 void neosprite_optimized_device::optimize_sprite_data()
 {
-	m_sprite_gfx_address_mask = optimize_helper(m_sprite_gfx, m_region_sprites, m_region_sprites_size);
+	m_sprite_gfx_address_mask = m_optimized_mask = optimize_helper(m_sprite_gfx, m_region_sprites, m_region_sprites_size);
+	m_spritegfx8 = &m_sprite_gfx[0];
+	m_optimized_region = m_region_sprites;
+	m_optimized_size = m_region_sprites_size;
+}
+
+// a reset does not change the sprite data, and whoever changes it converts it
+// again: reuse the conversion, which takes 300 ms on a 64 MB cartridge
+void neosprite_optimized_device::reset_sprite_data()
+{
+	if (m_sprite_gfx.empty() || m_optimized_region != m_region_sprites || m_optimized_size != m_region_sprites_size)
+		optimize_sprite_data();
+	m_sprite_gfx_address_mask = m_optimized_mask;
 	m_spritegfx8 = &m_sprite_gfx[0];
 }
 
