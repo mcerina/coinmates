@@ -1,0 +1,82 @@
+#!/bin/bash
+# Coinmates, the command of the flatpak:
+#   flatpak run io.github.mcerina.Coinmates host <game> [port] [players]   (default port 7000, 2 players)
+#   flatpak run io.github.mcerina.Coinmates join <game> <address>          (the address the host sent you)
+#   flatpak run io.github.mcerina.Coinmates bench [frames] [game ...]      (rollback costs on this machine)
+# ROMs: the folders of EmuDeck (Emulation/roms/arcade, then Emulation/bios/mame and
+# Emulation/bios), in the home or on an SD card; or $NP_ROMS. More options for the game
+# go in NP_ARGS, e.g. --env=NP_ARGS="-netplay_delay 2" for the host of a heavy game.
+# Everybody plays with the player 1 controls, whatever seat they get.
+set -e
+mode=$1; shift || true
+usage() { sed -n 3,5p "$0"; exit 1; }
+if [ -z "$NP_ROMS" ]; then
+  for e in "$HOME/Emulation" /run/media/*/Emulation /run/media/*/*/Emulation; do
+    [ -d "$e/roms/arcade" ] && { NP_ROMS="$e/roms/arcade;$e/bios/mame;$e/bios"; break; }
+  done
+  [ -n "$NP_ROMS" ] || { echo "Emulation/roms/arcade not found: put the ROMs there, or set NP_ROMS"; exit 1; }
+fi
+
+# the hottest sensor, in degrees: the APU on a Steam Deck
+temperature() {
+  local t max=0
+  for t in /sys/class/hwmon/hwmon*/temp*_input /sys/class/thermal/thermal_zone*/temp; do
+    [ -r "$t" ] && read -r t < "$t" 2>/dev/null && [ "$t" -gt "$max" ] && max=$t
+  done
+  echo $((max / 1000))
+}
+
+# for every supported game found (or the ones given): a sync test that rolls back 8 frames
+# at every frame, 2 players, bot; one JSON per game in coinmates-bench/<date>/ of the app's
+# data folder (~/.var/app/io.github.mcerina.Coinmates/data), packed
+# at the end into a .tar.gz to send back. Gentle with a handheld: one game at a time on one
+# core, at the game's speed; before each game it waits until the APU is below COOL degrees,
+# and stops a game that gets to HOT (then measured again once cool, at most twice)
+bench() {
+  local frames=${1:-1200}; shift || true
+  local games=("$@") dirs g d n=0 pid try
+  local COOL=${COOL:-65} HOT=${HOT:-85}
+  if [ ${#games[@]} -eq 0 ]; then
+    IFS=';' read -ra dirs <<< "$NP_ROMS"
+    for g in $(cat /app/share/coinmates/games.txt); do
+      for d in "${dirs[@]}"; do [ -f "$d/$g.zip" ] && { games+=("$g"); break; }; done
+    done
+  fi
+  local out=${XDG_DATA_HOME:-$HOME/.local/share}/coinmates-bench/$(date +%Y%m%d-%H%M)
+  mkdir -p "$out"
+  { coinmates -version; nproc; grep -m1 'model name' /proc/cpuinfo; } > "$out/machine.txt"
+  export SDL_VIDEODRIVER=dummy SDL_AUDIODRIVER=dummy
+  for g in "${games[@]}"; do
+    n=$((n + 1))
+    for try in 1 2; do
+      while [ "$(temperature)" -ge "$COOL" ]; do echo "  cooling down: $(temperature) C"; sleep 10; done
+      echo "[$n/${#games[@]}] $g ($(temperature) C)"
+      MAME_RBTEST="check=8,frames=$frames,players=2,out=$out/$g.ps1" nice -n 10 timeout 600 coinmates "$g" -rompath "$NP_ROMS" \
+        -skip_gameinfo -nonvram_save -noreadconfig -cfg_directory "$out/cfg" -nvram_directory "$out/nvram" \
+        -video soft -window -sound none -numprocessors 1 </dev/null > "$out/$g.ps1.log" 2>&1 &
+      pid=$!
+      while kill -0 $pid 2>/dev/null; do
+        if [ "$(temperature)" -ge "$HOT" ]; then
+          kill $pid; echo "  too hot ($(temperature) C): stopped" | tee -a "$out/$g.ps1.log"; break
+        fi
+        sleep 2
+      done
+      wait $pid 2>/dev/null || true
+      grep -q 'too hot' "$out/$g.ps1.log" || break
+    done
+    echo "$g $(temperature)" >> "$out/temperatures.txt"
+  done
+  tar -czf "$out.tar.gz" -C "$(dirname "$out")" "$(basename "$out")"
+  echo "Done: $out.tar.gz"
+}
+
+case "$mode" in
+  host) [ -n "$1" ] || usage; game=$1; NET=(-netplay_host "${2:-7000}" -netplay_players "${3:-2}") ;;
+  join) [ -n "$2" ] || usage; game=$1; NET=(-netplay_join "$2") ;;
+  bench) bench "$@"; exit ;;
+  *) usage ;;
+esac
+dir=${XDG_CONFIG_HOME:-$HOME/.config}/coinmates
+mkdir -p "$dir/cfg" "$dir/nvram"
+exec coinmates "$game" -rompath "$NP_ROMS" -skip_gameinfo -nonvram_save \
+  -cfg_directory "$dir/cfg" -nvram_directory "$dir/nvram" "${NET[@]}" $NP_ARGS

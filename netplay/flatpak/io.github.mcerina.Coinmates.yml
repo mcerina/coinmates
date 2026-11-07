@@ -1,0 +1,31 @@
+# Coinmates: co-op arcade games with friends, online. Based on MAME.
+# Built from the committed state of this repository by ../../../build-flatpak.sh
+app-id: io.github.mcerina.Coinmates
+runtime: org.freedesktop.Platform
+runtime-version: '25.08'
+sdk: org.freedesktop.Sdk
+command: launch
+finish-args:
+  - --share=network
+  - --share=ipc
+  - --socket=wayland
+  - --socket=fallback-x11
+  - --socket=pulseaudio
+  - --device=all                       # controllers
+  - --filesystem=home/Emulation:ro     # the ROMs, where EmuDeck keeps them
+  - --filesystem=/run/media:ro         # or on an SD card
+modules:
+  - name: mame
+    buildsystem: simple
+    build-options:
+      strip: true
+    build-commands:
+      - make -j$FLATPAK_BUILDER_N_JOBS SUBTARGET=coinmates SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,)
+        USE_QTDEBUG=0 NO_USE_PORTAUDIO=1 NO_USE_PIPEWIRE=1 PRECOMPILE=0 NEW_GIT_VERSION=$(netplay/version.sh)
+      - install -Dm755 coinmates /app/bin/coinmates
+      - install -Dm755 netplay/flatpak/launch /app/bin/launch
+      - install -Dm644 netplay/games.txt /app/share/coinmates/games.txt
+    sources:
+      - type: git
+        path: ../..
+        branch: netplay-clean
