@@ -191,6 +191,10 @@ video_manager::video_manager(running_machine &machine)
 
 void video_manager::set_frameskip(int frameskip)
 {
+	// in a netplay session every frame is drawn: what is computed while drawing is in the state
+	if (machine().in_netplay_session())
+		return;
+
 	if (0 > frameskip)
 	{
 		// -1 means autoframeskip

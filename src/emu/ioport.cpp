@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "rollback.h"
 
 #include "config.h"
 #include "emuopts.h"
@@ -1045,8 +1046,9 @@ void ioport_field::set_user_settings(const user_settings &settings)
 		m_live->cfg[seqtype] = settings.cfg[seqtype];
 	}
 
-	// if there's a list of settings or we're an adjuster, copy the current value
-	if (!m_settinglist.empty() || m_type == IPT_ADJUSTER)
+	// if there's a list of settings or we're an adjuster, copy the current value;
+	// not online, from the room on (the configuration is loaded before): all players have the host's
+	if ((!m_settinglist.empty() || m_type == IPT_ADJUSTER) && !machine().rollback())
 		m_live->value = settings.value;
 
 	if (m_live->analog)
@@ -2174,6 +2176,10 @@ void ioport_manager::frame_update()
 {
 	auto profile = g_profiler.start(PROFILER_INPUT);
 
+	rollback_session *const rollback = machine().rollback();
+	if (rollback)
+		rollback->frame_inputs_begin();
+
 	// record/playback information about the current frame
 	attotime curtime = machine().time();
 	playback_frame(curtime);
@@ -2198,6 +2204,8 @@ void ioport_manager::frame_update()
 	for (auto &port : m_portlist)
 	{
 		port.second->frame_update();
+		if (rollback)
+			rollback->frame_inputs_port(*port.second);
 
 		// handle playback/record
 		playback_port(*port.second.get());

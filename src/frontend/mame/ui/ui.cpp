@@ -30,6 +30,7 @@
 
 #include "config.h"
 #include "emuopts.h"
+#include "rollback.h"
 #include "mameopts.h"
 #include "drivenum.h"
 #include "fileio.h"
@@ -665,8 +666,8 @@ void mame_ui_manager::display_startup_screens(bool first_time)
 	bool video_none = strcmp(downcast<osd_options &>(machine().options()).video(), OSDOPTVAL_NONE) == 0;
 
 	// disable everything if we are using -str for 300 (5 minutes) or fewer seconds, or if we're the empty driver,
-	// or if we are debugging, or if there's no mame window to send inputs to
-	if (!first_time || (str > 0 && str <= 60*5) || &machine().system() == &GAME_NAME(___empty) || (machine().debug_flags & DEBUG_FLAG_ENABLED) || video_none)
+	// or if we are debugging, or if there's no mame window to send inputs to, or in a rollback session
+	if (!first_time || (str > 0 && str <= 60*5) || rollback_session::requested(machine().options()) || &machine().system() == &GAME_NAME(___empty) || (machine().debug_flags & DEBUG_FLAG_ENABLED) || video_none)
 		show_gameinfo = show_warnings = false;
 
 #if defined(__EMSCRIPTEN__)
@@ -1758,7 +1759,7 @@ uint32_t mame_ui_manager::handler_ingame()
 	// handle a reset request
 	if (inp.pressed(IPT_UI_RESET_MACHINE))
 		machine().schedule_hard_reset();
-	if (inp.pressed(IPT_UI_SOFT_RESET))
+	if (inp.pressed(IPT_UI_SOFT_RESET) && !machine().in_netplay_session())
 		machine().schedule_soft_reset();
 
 	// handle a request to display graphics/palette
@@ -1880,12 +1881,12 @@ uint32_t mame_ui_manager::handler_ingame()
 	if (inp.pressed(IPT_UI_FRAMESKIP_DEC))
 		decrease_frameskip();
 
-	// toggle throttle
-	if (inp.pressed(IPT_UI_THROTTLE))
+	// toggle throttle; online the game goes at the others' pace
+	if (inp.pressed(IPT_UI_THROTTLE) && !machine().in_netplay_session())
 		machine().video().set_throttled(!machine().video().throttled());
 
 	// check for fast forward
-	if (machine().ioport().type_pressed(IPT_UI_FAST_FORWARD))
+	if (machine().ioport().type_pressed(IPT_UI_FAST_FORWARD) && !machine().in_netplay_session())
 	{
 		machine().video().set_fastforward(true);
 		show_fps_temp(0.5);

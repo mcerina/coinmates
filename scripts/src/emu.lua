@@ -33,6 +33,7 @@ includedirs {
 
 includedirs {
 	ext_includedir("asio"),
+	ext_includedir("zstd"),
 	ext_includedir("expat"),
 	ext_includedir("zlib"),
 	ext_includedir("flac"),
@@ -178,6 +179,7 @@ files {
 	MAME_DIR .. "src/emu/memarray.h",
 	MAME_DIR .. "src/emu/natkeyboard.cpp",
 	MAME_DIR .. "src/emu/natkeyboard.h",
+	MAME_DIR .. "src/emu/netplay.cpp",
 	MAME_DIR .. "src/emu/network.cpp",
 	MAME_DIR .. "src/emu/network.h",
 	MAME_DIR .. "src/emu/parameters.cpp",
@@ -187,6 +189,7 @@ files {
 	MAME_DIR .. "src/emu/output.cpp",
 	MAME_DIR .. "src/emu/output.h",
 	MAME_DIR .. "src/emu/output.ipp",
+	MAME_DIR .. "src/emu/rbtest.cpp",
 	MAME_DIR .. "src/emu/recording.cpp",
 	MAME_DIR .. "src/emu/recording.h",
 	MAME_DIR .. "src/emu/render.cpp",
@@ -200,6 +203,8 @@ files {
 	MAME_DIR .. "src/emu/rendutil.h",
 	MAME_DIR .. "src/emu/resampler.cpp",
 	MAME_DIR .. "src/emu/resampler.h",
+	MAME_DIR .. "src/emu/rollback.cpp",
+	MAME_DIR .. "src/emu/rollback.h",
 	MAME_DIR .. "src/emu/romload.cpp",
 	MAME_DIR .. "src/emu/romload.h",
 	MAME_DIR .. "src/emu/romentry.h",

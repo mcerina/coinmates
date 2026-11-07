@@ -10,6 +10,7 @@
 
 #include "emu.h"
 #include "emuopts.h"
+#include "rollback.h"
 #include <cctype>
 
 
@@ -49,7 +50,10 @@ cpu_device::~cpu_device()
 
 bool cpu_device::allow_drc() const
 {
-	return mconfig().options().drc() && !m_force_no_drc;
+	// rollback needs the same result whatever was loaded before: a DRC splits
+	// code into blocks from wherever it started compiling, and counts cycles
+	// and takes interrupts only at block ends
+	return mconfig().options().drc() && !m_force_no_drc && !rollback_session::requested(mconfig().options());
 }
 
 

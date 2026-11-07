@@ -9,6 +9,7 @@
 ***************************************************************************/
 
 #include "emu.h"
+#include "rollback.h"
 
 #include "config.h"
 #include "crsshair.h"
@@ -419,6 +420,9 @@ int running_machine::run(bool quiet)
 		// perform a soft reset -- this takes us to the running phase
 		soft_reset();
 
+		// rollback netplay session, or sync test
+		m_rollback = rollback_session::create(*this);
+
 		// handle initial load
 		if (m_saveload_schedule != saveload_schedule::NONE)
 			handle_saveload();
@@ -437,7 +441,11 @@ int running_machine::run(bool quiet)
 
 			// execute CPUs if not paused
 			if (!m_paused)
+			{
 				m_scheduler.timeslice();
+				if (m_rollback)
+					m_rollback->post_timeslice();
+			}
 			// otherwise, just pump video updates and sound mapping updates through
 			else
 			{
@@ -454,9 +462,9 @@ int running_machine::run(bool quiet)
 		// and out via the exit phase
 		m_current_phase = machine_phase::EXIT;
 
-		// save the NVRAM and configuration
+		// save the NVRAM and configuration; not the NVRAM of a system joined online, which is the host's
 		sound().ui_mute(true);
-		if (options().nvram_save())
+		if (options().nvram_save() && !*options().netplay_join())
 			nvram_save();
 		m_configuration->save_settings();
 	}
@@ -530,6 +538,9 @@ void running_machine::schedule_exit()
 
 void running_machine::schedule_hard_reset()
 {
+	if (in_netplay_session())
+		return;
+
 	m_hard_reset_pending = true;
 
 	// if we're executing, abort out immediately
@@ -689,6 +700,9 @@ void running_machine::set_saveload_filename(std::string &&filename)
 
 void running_machine::schedule_save(std::string &&filename)
 {
+	if (in_netplay_session())
+		return;
+
 	// specify the filename to save or load
 	set_saveload_filename(std::move(filename));
 
@@ -726,6 +740,9 @@ void running_machine::immediate_save(std::string_view filename)
 
 void running_machine::schedule_load(std::string &&filename)
 {
+	if (in_netplay_session())
+		return;
+
 	// specify the filename to save or load
 	set_saveload_filename(std::move(filename));
 
@@ -774,6 +791,9 @@ bool running_machine::rewind_capture()
 
 bool running_machine::rewind_step()
 {
+	if (in_netplay_session())
+		return false;
+
 	return m_save.rewind()->step();
 }
 
@@ -789,14 +809,20 @@ void running_machine::rewind_invalidate()
 }
 
 
+bool running_machine::in_netplay_session() const
+{
+	return m_rollback && m_rollback->in_session();
+}
+
+
 //-------------------------------------------------
 //  pause - pause the system
 //-------------------------------------------------
 
 void running_machine::pause()
 {
-	// ignore if nothing has changed
-	if (m_paused)
+	// ignore if nothing has changed, or if the other players would be left waiting
+	if (m_paused || in_netplay_session())
 		return;
 	m_paused = true;
 
