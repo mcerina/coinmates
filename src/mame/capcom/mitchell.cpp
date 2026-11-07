@@ -1764,6 +1764,12 @@ GFXDECODE_END
 
 void mitchell_state::machine_start()
 {
+	m_flipscreen = 0;
+	m_video_bank = 0;
+	m_paletteram_bank = 0;
+	save_item(NAME(m_flipscreen));
+	save_item(NAME(m_video_bank));
+	save_item(NAME(m_paletteram_bank));
 	save_item(NAME(m_dial_selected));
 	save_item(NAME(m_keymatrix));
 	save_item(NAME(m_dir));
@@ -1773,11 +1779,12 @@ void mitchell_state::machine_start()
 
 void spangbl_state::machine_start()
 {
+	mitchell_state::machine_start();
+
 	m_soundbank->configure_entries(0, 8, memregion("audiocpu")->base(), 0x4000);
 	m_soundbank->set_entry(0);
 
 	save_item(NAME(m_sample_select));
-	save_item(NAME(m_irq_source));
 }
 
 void mitchell_state::machine_reset()
