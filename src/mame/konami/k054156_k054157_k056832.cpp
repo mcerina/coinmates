@@ -1943,6 +1943,10 @@ void k056832_device::tilemap_draw_dj(screen_device &screen, bitmap_rgb32 &bitmap
 void k056832_device::set_layer_association(int status)
 {
 	m_default_layer_association = status;
+
+	// the page layout depends on it, and a load recomputes it
+	if (started())
+		update_page_layout();
 }
 
 
