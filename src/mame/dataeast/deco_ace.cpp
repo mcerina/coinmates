@@ -104,6 +104,9 @@ void deco_ace_device::device_start()
 void deco_ace_device::device_reset()
 {
 	memset(m_ace_ram.get(),0,0x28);
+
+	// the pens follow the palette RAM and fade registers, as after a load
+	palette_update();
 }
 
 //-------------------------------------------------
