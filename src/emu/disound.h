@@ -114,12 +114,17 @@ namespace emu::detail {
 		const S *ptrs(u32 channel, s32 index) const { return &m_buffer[channel][m_sync_position + index]; }
 
 	private:
+		void compact();
+		void presave();
+
 		std::vector<std::vector<S>> m_buffer;
 		u64 m_sync_sample;
 		u32 m_write_position;
 		u32 m_sync_position;
 		u32 m_history;
 		u32 m_channels;
+		u32 m_save_size;
+		u32 m_dirty_end;  // past it, up to m_save_size, the buffer is clear
 	};
 }
 
