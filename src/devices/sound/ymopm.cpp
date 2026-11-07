@@ -23,6 +23,19 @@ ym2151_device::ym2151_device(const machine_config &mconfig, const char *tag, dev
 
 
 //-------------------------------------------------
+//  device_start - device-specific startup
+//-------------------------------------------------
+
+void ym2151_device::device_start()
+{
+	parent::device_start();
+
+	// while held in reset the chip ignores writes
+	save_item(NAME(m_reset_state));
+}
+
+
+//-------------------------------------------------
 //  write/register_w/data_w - write access
 //-------------------------------------------------
 
