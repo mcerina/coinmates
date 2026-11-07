@@ -215,6 +215,16 @@ void video_manager::set_frameskip(int frameskip)
 
 void video_manager::frame_update(bool from_debugger)
 {
+	// rollback resimulation: only the per-frame notifiers (input sampling) run,
+	// after the end of the drawing for the screens that draw this frame
+	if (m_resimulating && !from_debugger)
+	{
+		for (screen_device &screen : screen_device_enumerator(machine().root_device()))
+			screen.update_partial(screen.visible_area().bottom());
+		machine().call_notifiers(MACHINE_NOTIFY_FRAME);
+		return;
+	}
+
 	// only render sound and video if we're in the running phase
 	machine_phase const phase = machine().phase();
 	bool skipped_it = m_skipping_this_frame;
