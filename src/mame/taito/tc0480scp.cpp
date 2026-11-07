@@ -341,6 +341,8 @@ void tc0480scp_device::device_reset()
 	for (auto & elem : m_ctrl)
 		elem = 0;
 
+	// scroll values follow the control registers, as after a load
+	device_post_load();
 }
 
 /*****************************************************************************
@@ -920,35 +922,35 @@ void tc0480scp_device::device_post_load()
 
 	reg = m_ctrl[0];
 	if (!flip) reg = -reg;
-	m_bgscrollx[0] = reg;
+	m_bgscrollx[0] = u16(reg); // 16-bit, as in ctrl_w
 
 	reg = m_ctrl[1] + 4;
 	if (!flip) reg = -reg;
-	m_bgscrollx[1] = reg;
+	m_bgscrollx[1] = u16(reg); // 16-bit, as in ctrl_w
 
 	reg = m_ctrl[2] + 8;
 	if (!flip) reg = -reg;
-	m_bgscrollx[2] = reg;
+	m_bgscrollx[2] = u16(reg); // 16-bit, as in ctrl_w
 
 	reg = m_ctrl[3] + 12;
 	if (!flip) reg = -reg;
-	m_bgscrollx[3] = reg;
+	m_bgscrollx[3] = u16(reg); // 16-bit, as in ctrl_w
 
 	reg = m_ctrl[4];
 	if (flip) reg = -reg;
-	m_bgscrolly[0] = reg;
+	m_bgscrolly[0] = u16(reg); // 16-bit, as in ctrl_w
 
 	reg = m_ctrl[5];
 	if (flip) reg = -reg;
-	m_bgscrolly[1] = reg;
+	m_bgscrolly[1] = u16(reg); // 16-bit, as in ctrl_w
 
 	reg = m_ctrl[6];
 	if (flip) reg = -reg;
-	m_bgscrolly[2] = reg;
+	m_bgscrolly[2] = u16(reg); // 16-bit, as in ctrl_w
 
 	reg = m_ctrl[7];
 	if (flip) reg = -reg;
-	m_bgscrolly[3] = reg;
+	m_bgscrolly[3] = u16(reg); // 16-bit, as in ctrl_w
 
 	reg = m_ctrl[0x0c];
 	if (flip) reg += m_text_xoffs;
