@@ -329,7 +329,8 @@ private:
 	save_error do_write(T check_space, U write_block, V start_header, W start_data);
 	template <typename T, typename U, typename V, typename W>
 	save_error do_read(T check_length, U read_block, V start_header, W start_data);
-	u32 signature() const;
+	u32 signature() const { return m_reg_allowed ? compute_signature() : m_signature; }
+	u32 compute_signature() const;
 	void dump_registry() const;
 	static std::pair<save_error, std::string> validate_header(const u8 *header, const char *gamename, u32 signature);
 
@@ -338,6 +339,7 @@ private:
 	std::unique_ptr<rewinder> m_rewind;               // rewinder
 	bool                      m_reg_allowed;          // are registrations allowed?
 	bool                      m_supported;            // are saved states supported?
+	u32                       m_signature;            // signature of the entries, fixed once registration is over
 
 	std::vector<std::unique_ptr<state_entry>>    m_entry_list;       // list of registered entries
 	std::vector<std::unique_ptr<ram_state>>      m_ramstate_list;    // list of ram states

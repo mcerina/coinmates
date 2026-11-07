@@ -70,6 +70,7 @@ save_manager::save_manager(running_machine &machine)
 	: m_machine(machine)
 	, m_reg_allowed(true)
 	, m_supported(false)
+	, m_signature(0)
 {
 	m_rewind = std::make_unique<rewinder>(*this);
 }
@@ -102,6 +103,9 @@ void save_manager::allow_registration(bool allowed)
 
 		if (dupes_found)
 			fatalerror("%d duplicate save state entries found.\n", dupes_found);
+
+		// computing it takes longer than saving a few hundred kilobytes of state
+		m_signature = compute_signature();
 
 		m_supported = true;
 		for (device_t &device : device_enumerator(machine().root_device()))
@@ -532,11 +536,11 @@ inline save_error save_manager::do_read(T check_length, U read_block, V start_he
 
 
 //-------------------------------------------------
-//  signature - compute the signature, which
-//  is a CRC over the structure of the data
+//  compute_signature - compute the signature,
+//  which is a CRC over the structure of the data
 //-------------------------------------------------
 
-u32 save_manager::signature() const
+u32 save_manager::compute_signature() const
 {
 	// iterate over entries
 	util::crc32_creator crc;
