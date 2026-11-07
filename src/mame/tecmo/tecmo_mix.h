@@ -78,6 +78,11 @@ protected:
 
 private:
 	uint32_t sum_colors(const pen_t *pal, int c1_idx, int c2_idx);
+	uint32_t noise();
+
+	// noise for the blending cases not understood yet: drawn on screen only,
+	// so not machine().rand(), which belongs to the emulated machine's state
+	uint32_t m_noise = 1;
 };
 
 DECLARE_DEVICE_TYPE(TECMO_MIXER, tecmo_mix_device)

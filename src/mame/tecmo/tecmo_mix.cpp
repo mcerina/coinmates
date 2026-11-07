@@ -44,6 +44,12 @@ void tecmo_mix_device::device_reset()
 {
 }
 
+uint32_t tecmo_mix_device::noise()
+{
+	m_noise = m_noise * 1103515245 + 12345;
+	return m_noise >> 8;
+}
+
 uint32_t tecmo_mix_device::sum_colors(const pen_t *pal, int c1_idx, int c2_idx)
 {
 	const pen_t c1 = pal[c1_idx];
@@ -117,7 +123,7 @@ void tecmo_mix_device::mix_bitmaps(screen_device &screen, bitmap_rgb32 &bitmap, 
 					{
 						if (fgbln)
 						{
-							dd[x] = machine().rand();
+							dd[x] = noise();
 						}
 						else
 						{
@@ -134,7 +140,7 @@ void tecmo_mix_device::mix_bitmaps(screen_device &screen, bitmap_rgb32 &bitmap, 
 					{
 						if (m_sprbln)
 						{ // sprite is blended with bgpen?
-							dd[x] = machine().rand();
+							dd[x] = noise();
 						}
 						else
 						{
@@ -211,7 +217,7 @@ void tecmo_mix_device::mix_bitmaps(screen_device &screen, bitmap_rgb32 &bitmap, 
 								if (fgbln)
 								{
 									// blended sprite over blended fg pixel?
-									dd[x] = machine().rand();
+									dd[x] = noise();
 								}
 								else
 								{
@@ -258,7 +264,7 @@ void tecmo_mix_device::mix_bitmaps(screen_device &screen, bitmap_rgb32 &bitmap, 
 							if (fgbln)
 							{
 								// blended sprite over blended fg pixel?
-								dd[x] = machine().rand();
+								dd[x] = noise();
 							}
 							else
 							{
