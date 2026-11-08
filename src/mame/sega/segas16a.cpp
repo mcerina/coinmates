@@ -2297,6 +2297,8 @@ void segas16a_state::system16a(machine_config &config)
 	m_screen->set_visarea(0*8, 40*8-1, 0*8, 28*8-1);
 	m_screen->set_screen_update(FUNC(segas16a_state::screen_update));
 	m_screen->set_palette(m_palette);
+	// the sprite chip writes its current address back to sprite RAM while drawing
+	m_screen->set_video_attributes(VIDEO_ALWAYS_UPDATE);
 
 	SEGA_SYS16A_SPRITES(config, m_sprites);
 	SEGAIC16VID(config, m_segaic16vid, "gfxdecode");
