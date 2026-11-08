@@ -353,6 +353,9 @@ private:
 	// misc
 	bool    m_sndpending = false;
 	uint8_t m_snd_toggle = 0;
+	uint32_t m_noise = 0;   // random colors while drawing: not machine().rand(), whose seed is saved
+
+	uint32_t noise() { m_noise = m_noise * 1103515245 + 12345; return m_noise >> 8; }
 
 	// devices
 	required_device<cpu_device> m_maincpu;
@@ -443,7 +446,7 @@ TILE_GET_INFO_MEMBER(macrossp_state::get_scr_tile_info)
 			break;
 
 		default:
-			color = machine().rand() & 7;
+			color = noise() & 7;
 			break;
 	}
 
@@ -557,7 +560,7 @@ void macrossp_state::draw_sprites(screen_device &screen, bitmap_rgb32 &bitmap, c
 				break;
 
 			default:
-				col = machine().rand();
+				col = noise();
 				break;
 		}
 
