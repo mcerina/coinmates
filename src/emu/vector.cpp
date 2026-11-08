@@ -77,11 +77,8 @@ void vector_device::device_start()
 	/* allocate memory for tables */
 	m_vector_list = std::make_unique<point[]>(MAX_POINTS);
 
-	// register items for saving
-	save_item(NAME(m_prevpoint.x));
-	save_item(NAME(m_prevpoint.y));
-	save_item(NAME(m_prevpoint.col));
-	save_item(NAME(m_prevpoint.intensity));
+	// register items for saving (m_prevpoint is only for drawing, and depends on
+	// which frames were drawn)
 	save_item(NAME(m_frame_period));
 
 	/* allocate and start the vblank timer */
