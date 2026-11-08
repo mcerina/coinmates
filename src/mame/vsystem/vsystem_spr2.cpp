@@ -53,17 +53,7 @@ void vsystem_spr2_device::device_start()
 	// bind our handler
 	m_newtilecb.resolve();
 
-	save_item(NAME(m_curr_sprite.ox));
-	save_item(NAME(m_curr_sprite.xsize));
-	save_item(NAME(m_curr_sprite.zoomx));
-	save_item(NAME(m_curr_sprite.oy));
-	save_item(NAME(m_curr_sprite.ysize));
-	save_item(NAME(m_curr_sprite.zoomy));
-	save_item(NAME(m_curr_sprite.flipx));
-	save_item(NAME(m_curr_sprite.flipy));
-	save_item(NAME(m_curr_sprite.color));
-	save_item(NAME(m_curr_sprite.pri));
-	save_item(NAME(m_curr_sprite.map));
+	// m_curr_sprite is scratch space for drawing, filled for every sprite: not saved
 }
 
 void vsystem_spr2_device::device_reset()

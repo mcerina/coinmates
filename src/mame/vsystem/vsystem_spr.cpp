@@ -89,18 +89,8 @@ void vsystem_spr_device::device_start()
 	m_newtile_cb.resolve();
 	m_pri_cb.resolve();
 
+	// m_curr_sprite is scratch space for drawing, filled for every sprite
 	save_item(NAME(m_pal_base));
-
-	save_item(NAME(m_curr_sprite.ox));
-	save_item(NAME(m_curr_sprite.xsize));
-	save_item(NAME(m_curr_sprite.zoomx));
-	save_item(NAME(m_curr_sprite.oy));
-	save_item(NAME(m_curr_sprite.ysize));
-	save_item(NAME(m_curr_sprite.zoomy));
-	save_item(NAME(m_curr_sprite.flipx));
-	save_item(NAME(m_curr_sprite.flipy));
-	save_item(NAME(m_curr_sprite.color));
-	save_item(NAME(m_curr_sprite.map));
 }
 
 void vsystem_spr_device::device_reset()
