@@ -191,12 +191,12 @@ const options_entry emu_options::s_option_entries[] =
 	// comm options
 	{ nullptr,                                           nullptr,     core_options::option_type::HEADER,     "CORE NETPLAY OPTIONS" },
 	{ OPTION_NETPLAY_HOST,                               "0",         core_options::option_type::INTEGER,    "host a rollback netplay session on this UDP port" },
-	{ OPTION_NETPLAY_JOIN,                               "",          core_options::option_type::STRING,     "join a rollback netplay session at host:port" },
+	{ OPTION_NETPLAY_JOIN,                               "",          core_options::option_type::STRING,     "join a rollback netplay session: its room code, or host:port" },
 	{ OPTION_NETPLAY_PLAYERS,                            "2",         core_options::option_type::INTEGER,    "players in the session, 2 to 4 (host)" },
 	{ OPTION_NETPLAY_DELAY,                              "1",         core_options::option_type::INTEGER,    "frames of input delay (host)" },
 	{ OPTION_NETPLAY_WINDOW,                             "10",        core_options::option_type::INTEGER,    "maximum frames to roll back (host)" },
 	{ OPTION_NETPLAY_HASH_EVERY,                         "30",        core_options::option_type::INTEGER,    "frames between desync checks (host)" },
-	{ OPTION_NETPLAY_STUN,                               "stun.l.google.com:19302;stun.cloudflare.com:3478", core_options::option_type::STRING, "STUN servers that tell the public address, separated by ; (empty: none)" },
+	{ OPTION_NETPLAY_DHT,                                "router.bittorrent.com:6881;dht.transmissionbt.com:6881;router.utorrent.com:6881;dht.libtorrent.org:25401", core_options::option_type::STRING, "BitTorrent DHT nodes to start from, to find the room's players and the public address, separated by ; (empty: none)" },
 
 	{ nullptr,                                           nullptr,     core_options::option_type::HEADER,     "CORE COMM OPTIONS" },
 	{ OPTION_COMM_LOCAL_HOST,                            "0.0.0.0",   core_options::option_type::STRING,     "local address to bind to" },

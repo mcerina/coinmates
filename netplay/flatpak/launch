@@ -1,7 +1,7 @@
 #!/bin/bash
 # Coinmates, the command of the flatpak:
 #   flatpak run io.github.mcerina.Coinmates host <game> [port] [players]   (default port 7000, 2 players)
-#   flatpak run io.github.mcerina.Coinmates join <game> <address>          (the address the host sent you)
+#   flatpak run io.github.mcerina.Coinmates join <game> <room code>        (the code the host sent you; or host:port)
 #   flatpak run io.github.mcerina.Coinmates bench [frames] [game ...]      (rollback costs on this machine)
 # ROMs: the folders of EmuDeck (Emulation/roms/arcade, then Emulation/bios/mame and
 # Emulation/bios), in the home or on an SD card; or $NP_ROMS. More options for the game

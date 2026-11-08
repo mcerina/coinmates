@@ -184,7 +184,7 @@
 #define OPTION_NETPLAY_DELAY        "netplay_delay"
 #define OPTION_NETPLAY_WINDOW       "netplay_window"
 #define OPTION_NETPLAY_HASH_EVERY   "netplay_hash_every"
-#define OPTION_NETPLAY_STUN         "netplay_stun"
+#define OPTION_NETPLAY_DHT          "netplay_dht"
 #define OPTION_COMM_LOCAL_HOST      "comm_localhost"
 #define OPTION_COMM_LOCAL_PORT      "comm_localport"
 #define OPTION_COMM_REMOTE_HOST     "comm_remotehost"
@@ -474,7 +474,7 @@ public:
 	int netplay_delay() const { return int_value(OPTION_NETPLAY_DELAY); }
 	int netplay_window() const { return int_value(OPTION_NETPLAY_WINDOW); }
 	int netplay_hash_every() const { return int_value(OPTION_NETPLAY_HASH_EVERY); }
-	const char *netplay_stun() const { return value(OPTION_NETPLAY_STUN); }
+	const char *netplay_dht() const { return value(OPTION_NETPLAY_DHT); }
 	const char *comm_localhost() const { return value(OPTION_COMM_LOCAL_HOST); }
 	const char *comm_localport() const { return value(OPTION_COMM_LOCAL_PORT); }
 	const char *comm_remotehost() const { return value(OPTION_COMM_REMOTE_HOST); }

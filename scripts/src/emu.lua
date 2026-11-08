@@ -180,6 +180,8 @@ files {
 	MAME_DIR .. "src/emu/natkeyboard.cpp",
 	MAME_DIR .. "src/emu/natkeyboard.h",
 	MAME_DIR .. "src/emu/netplay.cpp",
+	MAME_DIR .. "src/emu/netplay_dht.cpp",
+	MAME_DIR .. "src/emu/netplay_dht.h",
 	MAME_DIR .. "src/emu/network.cpp",
 	MAME_DIR .. "src/emu/network.h",
 	MAME_DIR .. "src/emu/parameters.cpp",

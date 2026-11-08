@@ -14,29 +14,27 @@ La partita controlla entrambe le cose, e in caso contrario rifiuta la connession
 
 Le ROM non sono incluse. Le cartelle sono quelle di EmuDeck: i giochi in `Emulation/roms/arcade`, i BIOS lì oppure in `Emulation/bios/mame` o `Emulation/bios`. `Emulation` è nella home, oppure sulla scheda SD (`/run/media/...`). Alcuni giochi chiedono anche lo zip di un BIOS o di un chip, per esempio `neogeo.zip` o `qsound_hle.zip` per `dino`: se manca, MAME dice quale.
 
-## Unirsi a una partita
-
-1. Chi ospita ti manda il suo indirizzo, per esempio `203.0.113.5:7000`.
-2. Lancia:
-   ```
-   flatpak run io.github.mcerina.Coinmates join ffight 203.0.113.5:7000
-   ```
-3. Nel terminale compare `Netplay: your address: ...`. Copia l'indirizzo e mandalo in chat a chi ospita. Hai 5 minuti.
-4. Quando chi ospita lo incolla, la partita parte su entrambi i computer.
-
 ## Ospitare una partita
 
 ```
 flatpak run io.github.mcerina.Coinmates host ffight
 ```
 
+Sullo schermo compare il codice della stanza, per esempio `Netplay: room K7QM-3XPA`: mandalo in chat agli altri. Quando entrano, il terminale scrive `player 2 joined` e la partita parte.
+
+Per giocare in 3 o 4: `flatpak run io.github.mcerina.Coinmates host ffight 7000 3`.
+
 Su Linux con podman, dalla cartella del progetto: `./netplay.sh host ffight`.
 
-1. Nel terminale compare `Netplay: your address: ...`: mandalo agli altri.
-2. Loro ti mandano il proprio indirizzo.
-3. Incollalo nel terminale, uno per riga, e premi Invio. Il terminale risponde `Netplay: calling ...`, e quando l'altro entra `player 2 joined`.
+## Unirsi a una partita
 
-Per giocare in 3 o 4: `flatpak run io.github.mcerina.Coinmates host ffight 7000 3`, e incolla gli indirizzi di tutti.
+Con il codice che ti ha mandato chi ospita, e lo stesso gioco:
+
+```
+flatpak run io.github.mcerina.Coinmates join ffight K7QM-3XPA
+```
+
+Maiuscole e trattino non contano. Trovare la stanza richiede qualche secondo: i giocatori si cercano sulla rete DHT di BitTorrent, senza server di Coinmates. Se siete nella stessa casa vi trovate anche senza internet.
 
 ## Comandi
 
@@ -55,20 +53,20 @@ Durante la partita pausa, salvataggio, caricamento, reset, frameskip e DIP switc
 
 ## Se non funziona
 
-**`no answer from the host`.** I pacchetti non passano il router.
-- Controlla che chi ospita abbia incollato il tuo indirizzo esatto, mentre la tua finestra era ancora aperta.
+**`room not found`.** Dopo 5 minuti senza risposta.
+- Controlla il codice e il gioco, e che chi ospita abbia ancora la finestra aperta.
 - Se uno dei due vede `your router uses a different port for every destination (symmetric NAT)`, il router non permette il collegamento diretto. Succede per esempio con alcuni operatori mobili. Usate Tailscale, qui sotto.
+
+**Senza la rete DHT**, gli indirizzi si possono scambiare a mano. Chi ospita vede `Netplay: your address: ...` e lo manda in chat. Chi si unisce lo usa al posto del codice (`join ffight 203.0.113.5:7000`) e rimanda il proprio `your address`. Chi ospita lo incolla nel terminale, uno per riga.
 
 **Tailscale**, quando il collegamento diretto non va:
 1. Installatelo entrambi da https://tailscale.com/download.
 2. Chi ospita condivide il proprio computer con l'altro, dalla console di Tailscale con "Share", oppure lo invita nella propria rete.
 3. Chi si unisce usa l'indirizzo Tailscale di chi ospita, che inizia con `100.`: `flatpak run io.github.mcerina.Coinmates join ffight 100.x.y.z:7000`.
 
-Con Tailscale non serve incollare niente.
-
 **Il gioco va a scatti.** Ogni correzione di una previsione sbagliata rifà gli ultimi frame, e sui giochi più pesanti (`gdarius2`, `raystorm`, `rdft`, `rdft2`, `rfjet`, `battlera`, `legendoh`) con un ping alto non sempre ci sta in un frame. Chi ospita può aumentare il ritardo dei comandi a 2 frame, che vale per tutti: `flatpak run --env=NP_ARGS="-netplay_delay 2" io.github.mcerina.Coinmates host gdarius2`.
 
-**`refused by the host: different MAME build`.** Le versioni sono diverse, e il messaggio le mostra entrambe. Aggiornate tutti allo stesso commit e ricompilate.
+**`refused by the host: different MAME build`.** Le versioni di Coinmates sono diverse, e il messaggio le mostra entrambe. Aggiornate tutti all'ultima.
 
 **`refused by the host: different ROM contents`.** Le ROM del gioco non sono identiche. Controllate entrambi con `-verifyroms`.
 
