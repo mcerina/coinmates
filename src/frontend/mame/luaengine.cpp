@@ -13,6 +13,7 @@
 
 #include "mame.h"
 #include "pluginopts.h"
+#include "rollback.h"
 #include "ui/pluginopt.h"
 #include "ui/ui.h"
 
@@ -780,8 +781,17 @@ void lua_engine::on_machine_resume()
 	m_notifiers->on_resume();
 }
 
+// in a netplay session the frames are run again after a rollback, and only on some machines:
+// a plugin that writes to the machine (cheats, high scores) would make the players differ
+static bool plugins_paused(running_machine *machine)
+{
+	return machine && machine->rollback() && machine->rollback()->in_session();
+}
+
 void lua_engine::on_machine_frame()
 {
+	if (plugins_paused(m_machine))
+		return;
 	std::vector<int> tasks = std::move(m_frame_tasks);
 	m_frame_tasks.clear();
 	resume_tasks(m_lua_state, tasks, true); // TODO: doesn't need to return anything
@@ -831,6 +841,8 @@ void lua_engine::on_sound_update(const std::map<std::string, std::vector<std::pa
 
 void lua_engine::on_periodic()
 {
+	if (plugins_paused(m_machine))
+		return;
 	execute_function("LUA_ON_PERIODIC");
 }
 
@@ -2498,6 +2510,8 @@ void lua_engine::initialize()
 //-------------------------------------------------
 bool lua_engine::frame_hook()
 {
+	if (plugins_paused(m_machine))
+		return false;
 	std::vector<int> tasks = std::move(m_update_tasks);
 	m_update_tasks.clear();
 	resume_tasks(m_lua_state, tasks, true); // TODO: doesn't need to return anything
