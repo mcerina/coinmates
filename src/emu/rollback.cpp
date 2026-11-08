@@ -44,13 +44,23 @@ std::unique_ptr<rollback_session> rollback_session::create(running_machine &mach
 {
 	const emu_options &options = machine.options();
 	const bool host = options.netplay_host_port() != 0;
-	if (host && *options.netplay_join())
-		throw emu_fatalerror("Netplay: -netplay_host and -netplay_join exclude each other");
 	if (host || *options.netplay_join())
 		return create_netplay_session(machine, host);
 	if (const char *const config = std::getenv(SYNC_TEST_VARIABLE))
 		return create_sync_test(machine, config);
 	return nullptr;
+}
+
+int rollback_session::system_players(const ioport_list &ports)
+{
+	int players = 0;
+	for (auto &port : ports)
+		for (ioport_field &field : port.second->fields())
+			if (field.is_analog())
+				return 0; // analog controls aren't sent: online they would differ between the players
+			else if (field.is_digital_joystick() || (field.type() >= IPT_BUTTON1 && field.type() <= IPT_BUTTON16))
+				players = std::max(players, field.player() + 1);
+	return players;
 }
 
 rollback_session::rollback_session(running_machine &machine)

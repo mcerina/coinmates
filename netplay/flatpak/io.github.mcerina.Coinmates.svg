@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 128 128">
+  <!-- two coins, side by side: playing together -->
+  <circle cx="48" cy="64" r="38" fill="#e0a526" stroke="#8a5a00" stroke-width="6"/>
+  <circle cx="48" cy="64" r="24" fill="none" stroke="#8a5a00" stroke-width="4"/>
+  <circle cx="82" cy="64" r="38" fill="#f2c94c" stroke="#8a5a00" stroke-width="6"/>
+  <circle cx="82" cy="64" r="24" fill="none" stroke="#8a5a00" stroke-width="4"/>
+  <rect x="78" y="46" width="8" height="36" rx="3" fill="#8a5a00"/>
+</svg>

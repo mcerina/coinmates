@@ -14,6 +14,7 @@
 #include "ui/datmenu.h"
 #include "ui/info.h"
 #include "ui/inifile.h"
+#include "ui/utils.h"
 
 #include "audit.h"
 #include "cheat.h"
@@ -27,6 +28,7 @@
 #include "fileio.h"
 #include "rendfont.h"
 #include "rendutil.h"
+#include "rollback.h"
 #include "romload.h"
 #include "softlist.h"
 #include "softlist_dev.h"
@@ -37,6 +39,7 @@
 #include "util/path.h"
 
 #include <algorithm>
+#include <sstream>
 #include <cmath>
 #include <cstring>
 
@@ -208,6 +211,24 @@ private:
 	s_bios      m_bios;
 };
 
+class menu_select_launch::netplay_selection : public menu
+{
+public:
+	netplay_selection(mame_ui_manager &mui, render_target &target, game_driver const &driver);
+
+private:
+	virtual void populate() override;
+	virtual bool handle(event const *ev) override;
+
+	void launch(int port, std::string const &room);
+	std::string join_target() const;
+	std::string shown() const;
+
+	game_driver const &m_driver;
+	bool m_multiplayer;             // controls for two players or more
+	std::string m_room;
+};
+
 std::string menu_select_launch::reselect_last::s_driver;
 std::string menu_select_launch::reselect_last::s_software;
 std::string menu_select_launch::reselect_last::s_swlist;
@@ -365,6 +386,152 @@ void menu_select_launch::bios_selection::populate()
 		item_append(elem.first, 0, (void *)&elem.first);
 
 	item_append(menu_item_type::SEPARATOR);
+}
+
+//-------------------------------------------------
+//  netplay: the room code is typed with a keyboard,
+//  on the Steam Deck the one of Steam (Steam + X);
+//  an address instead goes straight to the host
+//-------------------------------------------------
+
+namespace {
+
+void *const ITEMREF_ALONE = reinterpret_cast<void *>(1);
+void *const ITEMREF_HOST = reinterpret_cast<void *>(2);
+void *const ITEMREF_JOIN = reinterpret_cast<void *>(3);
+constexpr int HOST_PORT = 7000;     // where players at home look for the host
+constexpr size_t ROOM_SIZE = 6;     // letters and digits; the hyphen is optional
+constexpr size_t JOIN_SIZE = 21;    // or an address, for a VPN: 100.101.102.103:7000
+
+bool room_char(char32_t ch)
+{
+	return (ch < 0x80) && (std::isalnum(int(ch)) || (ch == '-') || (ch == '.') || (ch == ':'));
+}
+
+} // anonymous namespace
+
+void menu_select_launch::select_netplay(game_driver const &driver)
+{
+	menu::stack_push<netplay_selection>(ui(), target(), driver);
+}
+
+menu_select_launch::netplay_selection::netplay_selection(mame_ui_manager &mui, render_target &target, game_driver const &driver)
+	: menu(mui, target)
+	, m_driver(driver)
+{
+	set_heading(driver.type.fullname());
+
+	machine_config const config(driver, machine().options());
+	ioport_list ports;
+	std::ostringstream errors;
+	for (device_t &device : device_enumerator(config.root_device()))
+		ports.append(device, errors);
+	m_multiplayer = rollback_session::system_players(ports) >= 2;
+}
+
+void menu_select_launch::netplay_selection::populate()
+{
+	item_append(_("Play Alone"), 0, ITEMREF_ALONE);
+	if (m_multiplayer)
+	{
+		item_append(_("Host Online"), 0, ITEMREF_HOST);
+		item_append(_("Join Online, Room Code"), shown() + '_', 0, ITEMREF_JOIN);
+	}
+	item_append(menu_item_type::SEPARATOR);
+}
+
+bool menu_select_launch::netplay_selection::handle(event const *ev)
+{
+	if (!ev || !ev->item)
+		return false;
+
+	switch (ev->iptkey)
+	{
+	case IPT_UI_SELECT:
+		if (ev->itemref == ITEMREF_ALONE)
+			launch(0, std::string());
+		else if (ev->itemref == ITEMREF_HOST)
+			launch(HOST_PORT, std::string());
+		else if (ev->itemref == ITEMREF_JOIN)
+		{
+			if (!join_target().empty())
+				launch(0, join_target());
+			else
+				ui().popup_time(3, "%s", _("Type the room code that the host sees, like K7Q-M3X"));
+		}
+		break;
+
+	case IPT_UI_HOME:
+		// R2, which is also Enter on the keyboard of Steam: it closes the keyboard, then comes here
+		if (!join_target().empty())
+		{
+			launch(0, join_target());
+			return true;
+		}
+		break;
+
+	case IPT_SPECIAL:
+		if ((ev->itemref == ITEMREF_JOIN) && input_character(m_room, JOIN_SIZE, ev->unichar, &room_char))
+		{
+			ev->item->set_subtext(shown() + '_');
+			return true;
+		}
+		break;
+
+	case IPT_UI_PASTE:
+		if ((ev->itemref == ITEMREF_JOIN) && paste_text(m_room, JOIN_SIZE, &room_char))
+		{
+			ev->item->set_subtext(shown() + '_');
+			return true;
+		}
+		break;
+
+	case IPT_UI_CLEAR:
+		if (ev->itemref == ITEMREF_JOIN)
+		{
+			m_room.clear();
+			ev->item->set_subtext("_");
+			return true;
+		}
+		break;
+	}
+	return false;
+}
+
+// an address as typed, with the host's port if missing; a code without its hyphen; or nothing yet
+std::string menu_select_launch::netplay_selection::join_target() const
+{
+	if (m_room.find('.') != std::string::npos)
+		return m_room.find(':') != std::string::npos ? m_room : m_room + ':' + std::to_string(HOST_PORT);
+	std::string room;
+	for (char c : m_room)
+		if (c != '-')
+			room += c;
+	return room.size() == ROOM_SIZE ? room : std::string();
+}
+
+// a code as the host sees it, whatever the case and the hyphen typed
+std::string menu_select_launch::netplay_selection::shown() const
+{
+	if (m_room.find_first_of(".:") != std::string::npos)
+		return m_room;
+	std::string code;
+	for (char c : m_room)
+		if (c != '-')
+			code += char(std::toupper(u8(c)));
+	if (code.size() > 3)
+		code.insert(3, 1, '-');
+	return code;
+}
+
+void menu_select_launch::netplay_selection::launch(int port, std::string const &room)
+{
+	// the session clears them when it ends, so that the next system plays alone
+	emu_options &options(machine().options());
+	options.set_value(OPTION_NETPLAY_HOST, port, OPTION_PRIORITY_CMDLINE);
+	options.set_value(OPTION_NETPLAY_JOIN, room, OPTION_PRIORITY_CMDLINE);
+	options.set_value(OPTION_NETPLAY_PLAYERS, 0, OPTION_PRIORITY_CMDLINE);
+	launch_system(ui(), m_driver, nullptr, nullptr, nullptr);
 }
 
 //-------------------------------------------------

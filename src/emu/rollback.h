@@ -32,6 +32,13 @@ public:
 	// features that depend on history must then be off (see allow_drc)
 	static bool requested(const emu_options &options);
 	static std::unique_ptr<rollback_session> create(running_machine &machine);
+
+	// the players a system has controls for (at most MAX_PLAYERS count in a session)
+	static int system_players(const ioport_list &ports);
+	static constexpr int MAX_PLAYERS = 4;
+
+	// why the last session ended, for the system list to show once; empty if it wasn't told
+	static std::string take_end_message() { return std::exchange(s_end_message, std::string()); }
 	virtual ~rollback_session() = default;
 
 	// true while others share this timeline: pausing, saving and resetting are off
@@ -42,7 +49,7 @@ public:
 	virtual void post_timeslice() = 0;                     // main loop, after every timeslice
 
 protected:
-	static constexpr int MAX_PLAYERS = 4;
+	static inline std::string s_end_message;
 
 	struct slot
 	{

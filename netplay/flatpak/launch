@@ -1,21 +1,21 @@
 #!/bin/bash
 # Coinmates, the command of the flatpak:
-#   flatpak run io.github.mcerina.Coinmates host <game> [port] [players]   (default port 7000, 2 players)
-#   flatpak run io.github.mcerina.Coinmates join <game> <room code>        (the code the host sent you; or host:port)
-#   flatpak run io.github.mcerina.Coinmates bench [frames] [game ...]      (rollback costs on this machine)
-# ROMs: the folders of EmuDeck (Emulation/roms/arcade, then Emulation/bios/mame and
-# Emulation/bios), in the home or on an SD card; or $NP_ROMS. More options for the game
-# go in NP_ARGS, e.g. --env=NP_ARGS="-netplay_delay 2" for the host of a heavy game.
+#   flatpak run io.github.mcerina.Coinmates                            (the list of games: play alone, host or join)
+#   flatpak run io.github.mcerina.Coinmates bench [frames] [game ...]  (rollback costs on this machine)
+# Paths and options as EmuDeck sets them for MAME (functions/EmuScripts/emuDeckMAME.sh and
+# configs/mame of github.com/dragoonDorise/EmuDeck): ROMs in Emulation/roms/arcade, then
+# Emulation/bios and Emulation/bios/mame, samples and artwork in Emulation/storage/mame;
+# Emulation is in the home or on an SD card. $NP_ROMS replaces the ROM paths. More options for the game
+# go in NP_ARGS, e.g. --env=NP_ARGS="-netplay_delay 3" for the host of a heavy game.
 # Everybody plays with the player 1 controls, whatever seat they get.
 set -e
 mode=$1; shift || true
-usage() { sed -n 3,5p "$0"; exit 1; }
-if [ -z "$NP_ROMS" ]; then
-  for e in "$HOME/Emulation" /run/media/*/Emulation /run/media/*/*/Emulation; do
-    [ -d "$e/roms/arcade" ] && { NP_ROMS="$e/roms/arcade;$e/bios/mame;$e/bios"; break; }
-  done
-  [ -n "$NP_ROMS" ] || { echo "Emulation/roms/arcade not found: put the ROMs there, or set NP_ROMS"; exit 1; }
-fi
+usage() { sed -n 3,4p "$0"; exit 1; }
+for e in "$HOME/Emulation" /run/media/*/Emulation /run/media/*/*/Emulation; do
+  [ -d "$e/roms/arcade" ] && { EMU=$e; break; }
+done
+NP_ROMS=${NP_ROMS:-${EMU:+$EMU/roms/arcade;$EMU/bios;$EMU/bios/mame}}
+[ -n "$NP_ROMS" ] || { echo "Emulation/roms/arcade not found: put the ROMs there, or set NP_ROMS"; exit 1; }
 
 # the hottest sensor, in degrees: the APU on a Steam Deck
 temperature() {
@@ -27,7 +27,8 @@ temperature() {
 }
 
 # for every supported game found (or the ones given): a sync test that rolls back 8 frames
-# at every frame, 2 players, bot; one JSON per game in coinmates-bench/<date>/ of the app's
+# at every frame, 2 players, bot, to measure the costs (without drawing the frames redone,
+# so some systems report state computed while drawing as differing: tests/qualify.sh checks that); one JSON per game in coinmates-bench/<date>/ of the app's
 # data folder (~/.var/app/io.github.mcerina.Coinmates/data), packed
 # at the end into a .tar.gz to send back. Gentle with a handheld: one game at a time on one
 # core, at the game's speed; before each game it waits until the APU is below COOL degrees,
@@ -71,12 +72,19 @@ bench() {
 }
 
 case "$mode" in
-  host) [ -n "$1" ] || usage; game=$1; NET=(-netplay_host "${2:-7000}" -netplay_players "${3:-2}") ;;
-  join) [ -n "$2" ] || usage; game=$1; NET=(-netplay_join "$2") ;;
+  "") ;;
   bench) bench "$@"; exit ;;
   *) usage ;;
 esac
 dir=${XDG_CONFIG_HOME:-$HOME/.config}/coinmates
 mkdir -p "$dir/cfg" "$dir/nvram"
-exec coinmates "$game" -rompath "$NP_ROMS" -skip_gameinfo -nonvram_save \
-  -cfg_directory "$dir/cfg" -nvram_directory "$dir/nvram" "${NET[@]}" $NP_ARGS
+# the controller as EmuDeck sets it for MAME: its default.cfg, and its joystick options
+[ -f "$dir/cfg/default.cfg" ] || cp /app/share/coinmates/default.cfg "$dir/cfg/"
+# the list starts with the games whose ROMs are there, not the 3000 systems of the drivers
+[ -f "$dir/ui.ini" ] || echo "last_used_filter Available" > "$dir/ui.ini"
+cd "$dir"   # where the menu writes ui.ini and its other files
+# not from EmuDeck: -nonvram_save, so that a session doesn't depend on what an earlier game saved
+exec coinmates -rompath "$NP_ROMS" -samplepath "$EMU/storage/mame/samples" -artpath "$EMU/storage/mame/artwork" \
+  -cfg_directory "$dir/cfg" -nvram_directory "$dir/nvram" -nonvram_save \
+  -joystickprovider sdljoy -joystick_deadzone 0.3 -joystick_saturation 0.85 -video opengl -samplerate 48000 \
+  $NP_ARGS

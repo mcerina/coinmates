@@ -138,6 +138,9 @@ protected:
 	void launch_system(game_driver const &driver, ui_software_info const &swinfo) { launch_system(ui(), driver, &swinfo, nullptr, nullptr); }
 	void launch_system(game_driver const &driver, ui_software_info const &swinfo, std::string const &part) { launch_system(ui(), driver, &swinfo, &part, nullptr); }
 
+	// play alone, host a netplay room or join one (emu/netplay.cpp)
+	void select_netplay(game_driver const &driver);
+
 	virtual void recompute_metrics(uint32_t width, uint32_t height, float aspect) override;
 	virtual void custom_render(uint32_t flags, void *selectedref, float top, float bottom, float origx1, float origy1, float origx2, float origy2) override;
 	virtual void menu_activated() override;
@@ -224,6 +227,7 @@ private:
 
 	class software_parts;
 	class bios_selection;
+	class netplay_selection;
 
 	class cache
 	{

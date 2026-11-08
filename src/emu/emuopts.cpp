@@ -192,7 +192,7 @@ const options_entry emu_options::s_option_entries[] =
 	{ nullptr,                                           nullptr,     core_options::option_type::HEADER,     "CORE NETPLAY OPTIONS" },
 	{ OPTION_NETPLAY_HOST,                               "0",         core_options::option_type::INTEGER,    "host a rollback netplay session on this UDP port" },
 	{ OPTION_NETPLAY_JOIN,                               "",          core_options::option_type::STRING,     "join a rollback netplay session: its room code, or host:port" },
-	{ OPTION_NETPLAY_PLAYERS,                            "2",         core_options::option_type::INTEGER,    "players in the session, 2 to 4 (host)" },
+	{ OPTION_NETPLAY_PLAYERS,                            "0",         core_options::option_type::INTEGER,    "start by itself when this many players have joined (host; 0: as many as the system has); Start starts earlier" },
 	{ OPTION_NETPLAY_DELAY,                              "1",         core_options::option_type::INTEGER,    "frames of input delay (host)" },
 	{ OPTION_NETPLAY_WINDOW,                             "10",        core_options::option_type::INTEGER,    "maximum frames to roll back (host)" },
 	{ OPTION_NETPLAY_HASH_EVERY,                         "30",        core_options::option_type::INTEGER,    "frames between desync checks (host)" },

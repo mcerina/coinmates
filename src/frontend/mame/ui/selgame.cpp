@@ -22,6 +22,7 @@
 #include "ui/ui.h"
 
 #include "infoxml.h"
+#include "rollback.h"
 #include "luaengine.h"
 #include "mame.h"
 
@@ -116,6 +117,10 @@ menu_select_game::menu_select_game(mame_ui_manager &mui, render_target &target, 
 
 	ui_globals::curdats_view = 0;
 	ui_globals::curdats_total = 1;
+
+	// a netplay session that ended by itself says why
+	if (std::string message = rollback_session::take_end_message(); !message.empty())
+		set_error(reset_options::REMEMBER_REF, std::move(message));
 }
 
 //-------------------------------------------------
@@ -592,11 +597,11 @@ bool menu_select_game::inkey_select(const event *menu_event)
 		media_auditor auditor(enumerator);
 		media_auditor::summary const summary = auditor.audit_media(AUDIT_VALIDATE_FAST);
 
-		// if everything looks good, schedule the new driver
+		// if everything looks good, choose how to play it; the default BIOS, which online all
+		// the players need the same
 		if (audit_passed(summary))
 		{
-			if (!select_bios(*system->driver, false))
-				launch_system(*system->driver);
+			select_netplay(*system->driver);
 			return false;
 		}
 		else
@@ -667,12 +672,8 @@ bool menu_select_game::inkey_select_favorite(const event *menu_event)
 
 		if (audit_passed(summary))
 		{
-			// if everything looks good, schedule the new driver
-			if (!select_bios(*ui_swinfo->driver, false))
-			{
-				reselect_last::reselect(true);
-				launch_system(*ui_swinfo->driver);
-			}
+			// if everything looks good, choose how to play it, as from the list
+			select_netplay(*ui_swinfo->driver);
 			return false;
 		}
 		else

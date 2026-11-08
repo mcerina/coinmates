@@ -46,12 +46,9 @@
 #include <array>
 #include <cstdlib>
 #include <deque>
-#include <iostream>
-#include <mutex>
 #include <random>
 #include <sstream>
 #include <string_view>
-#include <thread>
 #include <vector>
 
 
@@ -60,7 +57,7 @@ namespace {
 using udp = asio::ip::udp;
 
 constexpr u32 MAGIC = 0x4d4e5031;
-constexpr u32 PROTOCOL = 4;
+constexpr u32 PROTOCOL = 5;
 constexpr int INPUT_RING = 1024;        // frames of input kept: must cover a state transfer
 constexpr int MAX_INPUTS_PER_PACKET = 64;
 constexpr u32 CHUNK_SIZE = 1200;
@@ -68,12 +65,14 @@ constexpr u32 CHUNK_WINDOW = 256;       // chunks in flight: an acknowledgement 
 constexpr u32 CHUNKS_PER_MS = 2;        // about 2.4 MB/s
 constexpr u32 CHUNK_RESEND_MS = 200;
 constexpr u32 PEER_TIMEOUT_MS = 10000;
-constexpr u32 JOIN_TIMEOUT_MS = 300000;  // time to find the room, or to exchange the addresses by chat
+constexpr u32 JOIN_TIMEOUT_MS = 120000; // time to find the room; then waiting for the host to start has no limit
 constexpr u32 RESYNC_RETRY_MS = 5000;
 constexpr u32 PUNCH_MS = 250;
 constexpr u16 LAN_PORT = 7000;
+constexpr u32 SWEEP_MS = 250;
+constexpr u32 SWEEP_BATCH = 8;          // more fill the socket's buffer: packets to absent addresses wait seconds for ARP
 constexpr char ROOM_LETTERS[] = "23456789ABCDEFGHJKLMNPQRSTUVWXYZ";  // no 0, 1, I, O: they look alike
-constexpr size_t ROOM_LENGTH = 8;
+constexpr size_t ROOM_LENGTH = 6;
 constexpr s64 START_FRAME = 1;
 constexpr s64 NO_FRAME = std::numeric_limits<s64>::max();
 
@@ -99,7 +98,7 @@ std::string clean_room(std::string_view text)
 
 std::string room_name(const std::string &room)
 {
-	return room.substr(0, 4) + '-' + room.substr(4);
+	return room.substr(0, 3) + '-' + room.substr(3);
 }
 
 util::sha1_t room_hash(const char *what, const std::string &room)
@@ -279,13 +278,6 @@ private:
 		std::vector<u8> data;
 	};
 
-	// lines typed on the console, filled by a thread that may outlive the session
-	struct console_lines
-	{
-		std::mutex lock;
-		std::vector<std::string> lines;
-	};
-
 	struct delayed_packet
 	{
 		u32 time;
@@ -331,8 +323,8 @@ private:
 	void handle_packet(const udp::endpoint &from, const u8 *data, size_t size);
 	void handle_hello(const udp::endpoint &from, packet_reader &in);
 	void meet_tick(u32 now);
-	void read_console();
-	void punch_tick(u32 now);
+	void begin(int players);
+	void sweep_lan(const packet_writer &packet);
 	void handle_welcome(const udp::endpoint &from, packet_reader &in);
 	void handle_start(packet_reader &in);
 	void handle_input(int sender, packet_reader &in);
@@ -398,12 +390,15 @@ private:
 	u64 m_room_token = 0;           // proves to the host that a player knows the room code
 	u64 m_nonce = 0;
 	std::unique_ptr<netplay_dht> m_dht;
-	bool m_address_reported = false;
+	bool m_nat_reported = false;
 	size_t m_peers_reported = 0;
 	u32 m_room_message_ms = 0;
-	std::vector<udp::endpoint> m_punch;
 	u32 m_punch_ms = 0;
-	std::shared_ptr<console_lines> m_console;
+	asio::ip::address_v4 m_lan;
+	u32 m_sweep_ms = 0;
+	u32 m_sweep_next = 1;           // last byte of the next address
+	u32 m_send_failed = 0;
+	int m_wait_for = 0;             // players at which the host starts by itself
 	bool m_welcomed = false;
 	bool m_started = false;
 	bool m_go = false;
@@ -453,17 +448,36 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 
 	if (host)
 	{
-		m_players = std::clamp(machine.options().netplay_players(), 2, MAX_PLAYERS);
+		const int most = std::min(system_players(machine.ioport().ports()), MAX_PLAYERS);
+		if (most < 2)
+			throw emu_fatalerror("Netplay: %s has controls for one player only", machine.system().type.fullname());
+		m_players = most;
+		m_wait_for = machine.options().netplay_players() ? std::clamp(machine.options().netplay_players(), 2, most) : most;
 		m_delay = std::clamp(machine.options().netplay_delay(), 0, 8);
+		// on a Steam Deck the heaviest systems redo few frames within a frame: their inputs
+		// are delayed more, enough for a ping of 100 ms (RISULTATI-rollback.md)
+		static const std::pair<std::string_view, int> heavy[] = {
+			{ "gdarius2", 3 }, { "legendoh", 3 }, { "raystorm", 3 }, { "rdft", 3 }, { "rdft2", 3 }, { "rfjet", 3 },
+			{ "aoh", 2 }, { "battlera", 2 }, { "dmnfrnt", 2 }, { "dragnblz", 2 }, { "gunbird2", 2 }, { "kov2", 2 },
+			{ "rthun2", 2 }, { "s1945ii", 2 }, { "s1945iii", 2 }, { "soldivid", 2 }, { "thndzone", 2 } };
+		const game_driver &system = machine.system();
+		if (machine.options().get_entry(OPTION_NETPLAY_DELAY)->priority() == OPTION_PRIORITY_DEFAULT)
+			for (const auto &[name, delay] : heavy)
+				if (name == system.name || name == system.parent)
+					m_delay = delay;
 		m_window = std::clamp(machine.options().netplay_window(), 1, 60);
 		m_hash_every = std::clamp(machine.options().netplay_hash_every(), 1, 3600);
 		m_session = m_rng() | 1;
-		const int port = machine.options().netplay_host_port();
+		// another port if taken: the code finds it anyway, and the host writes to the players at home (sweep_lan)
+		asio::error_code busy;
 		m_socket.open(udp::v4());
-		m_socket.bind(udp::endpoint(udp::v4(), u16(port)));
+		m_socket.bind(udp::endpoint(udp::v4(), u16(machine.options().netplay_host_port())), busy);
+		if (busy)
+			m_socket.bind(udp::endpoint(udp::v4(), 0));
+		const int port = m_socket.local_endpoint().port();
 		for (size_t i = 0; i < ROOM_LENGTH; i++)
 			m_room += ROOM_LETTERS[m_rng() % (sizeof(ROOM_LETTERS) - 1)];
-		osd_printf_info("Netplay: room %s on UDP port %d, waiting for %d more player(s): give the code to the others\n", room_name(m_room), port, m_players - 1);
+		osd_printf_info("Netplay: room %s on UDP port %d: give the code to the others, then press Start (by itself with %d players)\n", room_name(m_room), port, m_wait_for);
 	}
 	else
 	{
@@ -473,7 +487,7 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 		{
 			m_room = clean_room(target);
 			if (m_room.size() != ROOM_LENGTH)
-				throw emu_fatalerror("Netplay: -netplay_join needs a room code like K7QM-3XPA, or host:port");
+				throw emu_fatalerror("Netplay: -netplay_join needs a room code like K7Q-M3X, or host:port");
 			osd_printf_info("Netplay: looking for room %s\n", room_name(m_room));
 		}
 		else
@@ -486,41 +500,36 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 			m_host_endpoint = *results.begin();
 			osd_printf_info("Netplay: joining %s\n", target);
 		}
+		// LAN_PORT if free: the host writes there (sweep_lan)
+		asio::error_code busy;
 		m_socket.open(udp::v4());
-		m_socket.bind(udp::endpoint(udp::v4(), 0));
+		m_socket.bind(udp::endpoint(udp::v4(), LAN_PORT), busy);
+		if (busy)
+			m_socket.bind(udp::endpoint(udp::v4(), 0));
 		m_nonce = (u64(m_rng()) << 32 | m_rng()) | 1;
 	}
 	m_socket.non_blocking(true);
 	asio::error_code ec;
+	{
+		// of the route to the internet: connecting a UDP socket sends nothing
+		udp::socket probe(m_socket.get_executor());
+		probe.open(udp::v4(), ec);
+		probe.connect(udp::endpoint(asio::ip::make_address_v4("8.8.8.8"), 53), ec);
+		const asio::ip::address_v4 address = ec ? asio::ip::address_v4() : probe.local_endpoint(ec).address().to_v4();
+		const u32 a = address.to_uint();
+		if (!ec && ((a >> 24) == 10 || (a >> 20) == 0xac1 || (a >> 16) == 0xc0a8))
+			m_lan = address;
+	}
 	m_socket.set_option(asio::socket_base::broadcast(true), ec);
 	if (!m_room.empty())
 		m_room_token = get_u64le(room_hash("token", m_room).m_raw) | 1;
 
-	if (*machine.options().netplay_dht())
+	if (!m_room.empty() && *machine.options().netplay_dht())
 	{
-		// without a room, only to learn the public address
 		m_dht = std::make_unique<netplay_dht>(m_socket, machine.options().netplay_dht(), m_rng);
 		netplay_dht::key key;
-		const util::sha1_t room = room_hash("room", m_room);
-		for (size_t i = 0; i < key.size(); i++)
-			key[i] = m_room.empty() ? u8(m_rng()) : room.m_raw[i];
-		m_dht->start(key, !m_room.empty());
-	}
-
-	if (host)
-	{
-		// the players' addresses, exchanged by chat if the DHT can't be reached, are pasted on the console
-		auto console = std::make_shared<console_lines>();
-		m_console = console;
-		std::thread([console] ()
-		{
-			std::string line;
-			while (std::getline(std::cin, line))
-			{
-				std::lock_guard<std::mutex> guard(console->lock);
-				console->lines.push_back(line);
-			}
-		}).detach();
+		std::copy_n(room_hash("room", m_room).m_raw, key.size(), key.begin());
+		m_dht->start(key, true);
 	}
 
 	if (screen_device *screen = screen_device_enumerator(machine.root_device()).first())
@@ -560,6 +569,9 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 
 netplay_session::~netplay_session()
 {
+	// a system started next from the menu plays alone, unless chosen again
+	m_machine.options().set_value(OPTION_NETPLAY_HOST, 0, OPTION_PRIORITY_CMDLINE);
+	m_machine.options().set_value(OPTION_NETPLAY_JOIN, "", OPTION_PRIORITY_CMDLINE);
 	send_bye();
 	write_log();
 	if (m_hash_log)
@@ -771,15 +783,19 @@ void netplay_session::lobby_tick()
 
 	const u32 now = now_ms();
 	meet_tick(now);
-	if (!m_all_joined && !m_welcomed && now - m_room_message_ms >= 1000)
+	int joined = 1;
+	while (joined < m_players && m_peers[joined].connected)
+		joined++;
+	if ((m_host ? !m_all_joined : !m_started) && now - m_room_message_ms >= 1000)
 	{
 		// kept on screen, for whoever plays in front of a TV
 		m_room_message_ms = now;
-		int missing = 0;
-		for (int p = 1; p < m_players; p++)
-			missing += m_peers[p].connected ? 0 : 1;
-		if (m_host)
-			m_machine.popmessage("Netplay: room %s\nwaiting for %d more player(s)", room_name(m_room), missing);
+		if (m_host && joined < 2)
+			m_machine.popmessage("Netplay: room %s\nwaiting for the other players", room_name(m_room));
+		else if (m_host)
+			m_machine.popmessage("Netplay: room %s\n%d players: press Start to begin", room_name(m_room), joined);
+		else if (m_welcomed)
+			m_machine.popmessage("Netplay: joined room %s\nwaiting for the host to start", m_room.empty() ? std::string() : room_name(m_room));
 		else if (m_room.empty())
 			m_machine.popmessage("Netplay: joining");
 		else
@@ -787,7 +803,20 @@ void netplay_session::lobby_tick()
 	}
 	if (m_host)
 	{
-		punch_tick(now);
+		if (!m_all_joined && joined >= 2 && (joined >= m_wait_for || m_machine.ioport().type_pressed(IPT_START1)))
+			begin(joined);
+		if (!m_all_joined && now - m_sweep_ms >= SWEEP_MS)
+		{
+			m_sweep_ms = now;
+			sweep_lan(packet_writer(P_PUNCH, 0, 0));
+		}
+		if (m_dht && !m_all_joined && now - m_punch_ms >= PUNCH_MS)
+		{
+			// the room's addresses: this opens the router to their packets
+			m_punch_ms = now;
+			for (const udp::endpoint &endpoint : m_dht->peers())
+				send(endpoint, packet_writer(P_PUNCH, 0, 0));
+		}
 		tick_transfers();
 		bool ready = m_all_joined;
 		for (int p = 1; p < m_players; p++)
@@ -815,6 +844,11 @@ void netplay_session::lobby_tick()
 			else
 			{
 				send(udp::endpoint(asio::ip::address_v4::broadcast(), LAN_PORT), out);
+				if (now - m_sweep_ms >= SWEEP_MS)
+				{
+					m_sweep_ms = now;
+					sweep_lan(out);
+				}
 				if (m_dht)
 					for (const udp::endpoint &endpoint : m_dht->peers())
 						send(endpoint, out);
@@ -1155,15 +1189,11 @@ void netplay_session::update_time_sync(s64 boundary)
 
 
 //-------------------------------------------------
-//  meeting: the host makes a room, whose code the
-//  others type. Everybody announces itself on the
-//  DHT under the code, and the host sends to the
-//  addresses found, which opens its router to the
-//  players' packets, as their own packets to the
-//  host open theirs (UDP hole punching). Players
-//  at home find the host by broadcast. Without the
-//  DHT, the addresses can still be sent by chat:
-//  the host pastes them on its console
+//  meeting: everybody announces itself on the DHT
+//  under the room code, and writes to the others:
+//  both sides writing opens the routers (UDP hole
+//  punching). At home the players broadcast, and
+//  write to every address to open the firewalls
 //-------------------------------------------------
 
 void netplay_session::meet_tick(u32 now)
@@ -1173,76 +1203,12 @@ void netplay_session::meet_tick(u32 now)
 	m_dht->tick(now);
 	for (; m_peers_reported < m_dht->peers().size(); m_peers_reported++)
 		osd_printf_verbose("Netplay: the DHT has %s:%d\n", m_dht->peers()[m_peers_reported].address().to_string(), int(m_dht->peers()[m_peers_reported].port()));
-	if (m_address_reported)
-		return;
-	if (const auto address = m_dht->public_address())
+	if (!m_nat_reported && m_dht->symmetric_nat())
 	{
-		m_address_reported = true;
-		osd_printf_info("Netplay: your address: %s:%d\n", address->address().to_string(), int(address->port()));
-		if (m_host)
-			osd_printf_info("Netplay: if the others can't find the room, send it to them, then paste here the addresses they get, one per line\n");
-		else if (m_room.empty())
-			osd_printf_info("Netplay: send it to the host\n");
-	}
-	else if (m_dht->symmetric_nat())
-	{
-		m_address_reported = true;
+		m_nat_reported = true;
 		osd_printf_info("Netplay: your router uses a different port for every destination (symmetric NAT): players outside your network will probably not reach you; use a VPN such as Tailscale\n");
 	}
 }
-
-void netplay_session::read_console()
-{
-	std::vector<std::string> lines;
-	{
-		std::lock_guard<std::mutex> guard(m_console->lock);
-		lines.swap(m_console->lines);
-	}
-	for (std::string &line : lines)
-	{
-		line = clean_address(line);
-		const auto colon = line.rfind(':');
-		asio::error_code ec;
-		const auto address = asio::ip::make_address_v4(line.substr(0, colon), ec);
-		const int port = colon == std::string::npos ? 0 : std::atoi(line.c_str() + colon + 1);
-		if (line.empty())
-			continue;
-		if (ec || port <= 0 || port > 65535)
-		{
-			osd_printf_info("Netplay: \"%s\" is not an address like 203.0.113.5:40000\n", line);
-			continue;
-		}
-		const udp::endpoint endpoint(address, u16(port));
-		if (std::find(m_punch.begin(), m_punch.end(), endpoint) == m_punch.end())
-		{
-			m_punch.push_back(endpoint);
-			osd_printf_info("Netplay: calling %s:%d\n", address.to_string(), port);
-		}
-	}
-}
-
-void netplay_session::punch_tick(u32 now)
-{
-	if (m_console)
-		read_console();
-	if (m_dht)
-		for (const udp::endpoint &endpoint : m_dht->peers())
-			if (std::find(m_punch.begin(), m_punch.end(), endpoint) == m_punch.end())
-				m_punch.push_back(endpoint);
-	if (m_punch.empty() || now - m_punch_ms < PUNCH_MS)
-		return;
-	m_punch_ms = now;
-	packet_writer out(P_PUNCH, 0, 0);
-	for (const udp::endpoint &to : m_punch)
-	{
-		bool joined = false;
-		for (int p = 1; p < m_players; p++)
-			joined = joined || (m_peers[p].connected && m_peers[p].endpoint == to);
-		if (!joined)
-			send(to, out);
-	}
-}
-
 
 //-------------------------------------------------
 //  transport
@@ -1261,6 +1227,8 @@ void netplay_session::send(const udp::endpoint &to, const packet_writer &packet)
 	asio::error_code ec;
 	m_socket.send_to(asio::buffer(packet.data()), to, 0, ec);
 	m_tx_bytes += packet.data().size();
+	if (ec && !m_send_failed++)
+		osd_printf_verbose("Netplay: cannot send to %s:%d: %s\n", to.address().to_string(), int(to.port()), ec.message());
 }
 
 // all: at the end, as the packets still queued would be lost with the process
@@ -1425,11 +1393,24 @@ void netplay_session::handle_hello(const udp::endpoint &from, packet_reader &in)
 	const u64 inputs = in.get<u64>();
 	const u64 room = in.get<u64>();
 	const u64 nonce = in.get<u64>();
-	if (!in.ok() || m_phase != phase::LOBBY)
+	if (!in.ok())
 		return;
 	// a player of another room on the same network; without a code, the address was typed
 	if (room && room != m_room_token)
 		return;
+	if (m_phase != phase::LOBBY)
+	{
+		bool known = false;
+		for (int p = 1; p < m_players; p++)
+			known = known || m_peers[p].endpoint == from;
+		if (!known)
+		{
+			packet_writer out(P_REJECT, 0, 0);
+			out.put_string("the game has already started");
+			send(from, out);
+		}
+		return;
+	}
 	// a player already in, by another way: at home and through the router
 	for (int p = 1; p < m_players; p++)
 		if (m_peers[p].connected && m_peers[p].nonce == nonce && m_peers[p].endpoint != from)
@@ -1439,7 +1420,7 @@ void netplay_session::handle_hello(const udp::endpoint &from, packet_reader &in)
 	if (protocol != PROTOCOL || build != emulator_info::get_build_version())
 		reason = util::string_format("different MAME build: the host has %s, you have %s", emulator_info::get_build_version(), build);
 	else if (system != m_machine.system().name)
-		reason = "different game";
+		reason = util::string_format("different game: the host is playing %s", m_machine.system().type.fullname());
 	else if (rom != m_rom_hash)
 		reason = "different ROM contents";
 	else if (state_size != m_state_size || layout != m_layout_hash)
@@ -1457,7 +1438,7 @@ void netplay_session::handle_hello(const udp::endpoint &from, packet_reader &in)
 			if (!m_peers[p].connected)
 				player = p;
 		if (player < 0)
-			reason = "session full";
+			reason = m_all_joined ? "the game has already started" : "the room is full";
 		else
 		{
 			m_peers[player].connected = true;
@@ -1478,21 +1459,30 @@ void netplay_session::handle_hello(const udp::endpoint &from, packet_reader &in)
 
 	send_welcome(player);
 	if (m_all_joined)
-	{
-		send_start(player);
-		return;
-	}
+		send_start(player); // the first one was lost
+}
 
+// a firewall lets in only answers from the addresses written to, which a broadcast isn't
+void netplay_session::sweep_lan(const packet_writer &packet)
+{
+	if (m_lan.is_unspecified())
+		return;
+	const u32 me = m_lan.to_uint();
+	for (u32 i = 0; i < SWEEP_BATCH; i++, m_sweep_next = m_sweep_next % 254 + 1)
+		if ((me & ~0xffu) + m_sweep_next != me)
+			send(udp::endpoint(asio::ip::address_v4((me & ~0xffu) + m_sweep_next), LAN_PORT), packet);
+}
+
+// the players who have joined play; whoever comes later is refused
+void netplay_session::begin(int players)
+{
+	m_players = players;
 	m_all_joined = true;
+	osd_printf_info("Netplay: starting with %d players\n", players);
 	for (int p = 1; p < m_players; p++)
-		m_all_joined = m_all_joined && m_peers[p].connected;
-	if (m_all_joined)
 	{
-		for (int p = 1; p < m_players; p++)
-		{
-			send_start(p);
-			start_transfer(p, START_FRAME, slot_for(START_FRAME).data);
-		}
+		send_start(p);
+		start_transfer(p, START_FRAME, slot_for(START_FRAME).data);
 	}
 }
 
@@ -1560,6 +1550,7 @@ void netplay_session::handle_welcome(const udp::endpoint &from, packet_reader &i
 void netplay_session::send_start(int player)
 {
 	packet_writer out(P_START, m_session, 0);
+	out.put<u8>(u8(m_players));
 	for (int p = 1; p < m_players; p++)
 	{
 		out.put<u32>(m_peers[p].endpoint.address().to_v4().to_uint());
@@ -1570,15 +1561,17 @@ void netplay_session::send_start(int player)
 
 void netplay_session::handle_start(packet_reader &in)
 {
+	const int players = in.get<u8>();
 	std::vector<udp::endpoint> endpoints;
-	for (int p = 1; p < m_players; p++)
+	for (int p = 1; p < players; p++)
 	{
 		const u32 address = in.get<u32>();
 		const u16 port = in.get<u16>();
 		endpoints.emplace_back(asio::ip::address_v4(address), port);
 	}
-	if (!in.ok())
+	if (!in.ok() || players < 2 || players > MAX_PLAYERS || m_me >= players)
 		return;
+	m_players = players;
 	for (int p = 1; p < m_players; p++)
 	{
 		if (p != m_me)
@@ -1865,6 +1858,7 @@ void netplay_session::end_session(const char *reason)
 	if (m_phase == phase::ENDED)
 		return;
 	osd_printf_info("Netplay: session over: %s\n", reason);
+	s_end_message = util::string_format("Netplay: %s", reason);
 	send_bye();
 	m_end_reason = reason;
 	m_phase = phase::ENDED;
