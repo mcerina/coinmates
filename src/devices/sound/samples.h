@@ -44,6 +44,7 @@ public:
 	// start/stop helpers
 	void start(uint8_t channel, uint32_t samplenum, bool loop = false);
 	void start_raw(uint8_t channel, const int16_t *sampledata, uint32_t samples, uint32_t frequency, bool loop = false);
+	void add_raw(const int16_t *sampledata, uint32_t samples);
 	void pause(uint8_t channel, bool pause = true);
 	void stop(uint8_t channel);
 	void stop_all();
@@ -101,7 +102,7 @@ protected:
 	// internal state
 	std::vector<channel_t> m_channel;
 	std::vector<sample_t> m_sample;
-	std::vector<std::pair<const int16_t *, uint32_t>> m_raw; // start_raw() buffers seen in this session
+	std::vector<std::pair<const int16_t *, uint32_t>> m_raw; // start_raw() buffers added or seen in this session
 
 	// internal constants
 	static constexpr uint8_t FRAC_BITS = 24;

@@ -809,6 +809,10 @@ void tmnt_state::machine_start()
 	save_item(NAME(m_tmnt_soundlatch));
 	save_item(NAME(m_last));
 	save_item(NAME(m_irq5_mask));
+
+	// the title music, also for a state where it plays saved by another machine
+	if (m_samples.found())
+		m_samples->add_raw(m_sampledata, 0x40000);
 }
 
 void tmnt_state::machine_reset()

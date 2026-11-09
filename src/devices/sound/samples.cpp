@@ -112,9 +112,8 @@ void samples_device::start_raw(uint8_t channel, const int16_t *sampledata, uint3
 
 	// update the parameters; raw buffers are numbered from -2 down so
 	// that a load in the same session can find them again
+	add_raw(sampledata, samples);
 	auto const raw = std::find(m_raw.begin(), m_raw.end(), std::make_pair(sampledata, samples)) - m_raw.begin();
-	if (raw == m_raw.size())
-		m_raw.emplace_back(sampledata, samples);
 	chan.source = sampledata;
 	chan.source_num = -2 - int32_t(raw);
 	chan.source_len = samples;
@@ -123,6 +122,19 @@ void samples_device::start_raw(uint8_t channel, const int16_t *sampledata, uint3
 	chan.curfreq = frequency;
 	chan.loop = loop;
 	chan.stream->set_sample_rate(frequency);
+}
+
+
+//-------------------------------------------------
+//  add_raw - a buffer that start_raw() will play:
+//  added at start, a state saved by another
+//  machine where it was playing finds it too
+//-------------------------------------------------
+
+void samples_device::add_raw(const int16_t *sampledata, uint32_t samples)
+{
+	if (std::find(m_raw.begin(), m_raw.end(), std::make_pair(sampledata, samples)) == m_raw.end())
+		m_raw.emplace_back(sampledata, samples);
 }
 
 
