@@ -1427,12 +1427,12 @@ void rom_load_manager::load_software_part_region(device_t &device, software_list
 
 		if (ROMREGION_ISERASE(region)) // clear the region if it's requested
 			memset(memregion->base(), ROMREGION_GETERASEVAL(region), memregion->bytes());
-		else if (memregion->bytes() <= 0x400000) // or if it's sufficiently small (<= 4MB)
-			memset(memregion->base(), 0, memregion->bytes());
 #ifdef MAME_DEBUG
-		else // if we're debugging, fill region with random data to catch errors
+		else if (memregion->bytes() > 0x400000) // if we're debugging, fill large regions with random data to catch errors
 			fill_random(memregion->base(), memregion->bytes());
 #endif
+		else // otherwise clear it: what the ROMs don't fill must be the same at every start
+			memset(memregion->base(), 0, memregion->bytes());
 
 		// update total number of roms
 		for (const rom_entry *rom = rom_first_file(region); rom != nullptr; rom = rom_next_file(rom))
@@ -1506,12 +1506,12 @@ void rom_load_manager::process_region_list()
 
 				if (ROMREGION_ISERASE(region)) // clear the region if it's requested
 					memset(memregion->base(), ROMREGION_GETERASEVAL(region), memregion->bytes());
-				else if (memregion->bytes() <= 0x400000) // or if it's sufficiently small (<= 4MB)
-					memset(memregion->base(), 0, memregion->bytes());
 #ifdef MAME_DEBUG
-				else // if we're debugging, fill region with random data to catch errors
+				else if (memregion->bytes() > 0x400000) // if we're debugging, fill large regions with random data to catch errors
 					fill_random(memregion->base(), memregion->bytes());
 #endif
+				else // otherwise clear it: what the ROMs don't fill must be the same at every start
+					memset(memregion->base(), 0, memregion->bytes());
 
 				// now process the entries in the region
 				if (searchpath.empty())
