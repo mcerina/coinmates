@@ -69,6 +69,7 @@ private:
 	void announce(const node &n);
 	void send(const udp::endpoint &to, const std::string &message);
 	void add_node(const key &id, const udp::endpoint &endpoint);
+	void sort_nodes();
 
 	udp::socket &m_socket;
 	std::vector<udp::endpoint> m_bootstrap;

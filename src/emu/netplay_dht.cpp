@@ -26,7 +26,7 @@ constexpr u32 STEP_MS = 200;        // more nodes asked, until the closest have 
 constexpr u32 ANSWER_MS = 2000;     // a node that hasn't answered by then is forgotten
 constexpr u32 REFRESH_MS = 3000;    // the closest asked again for new players, and announced to
 constexpr int ALPHA = 4;            // nodes asked at every step
-constexpr size_t K = 8;             // the closest nodes, which keep the announces
+constexpr size_t K = 16;            // the closest nodes asked and announced to (BEP 5 keeps 8 per bucket): more against the nodes that don't keep them
 constexpr size_t MAX_NODES = 64;
 constexpr size_t MAX_PEERS = 64;
 
@@ -99,6 +99,14 @@ std::string bstring(std::string_view s)
 std::string_view chars(const netplay_dht::key &k)
 {
 	return std::string_view(reinterpret_cast<const char *>(k.data()), k.size());
+}
+
+// an id that shares its first 32 bits with the target: of the about 20 million nodes, the closest
+// share about 25. Made up to be the closest (Sybil nodes), they keep no announces, and in the K
+// closest they hide the real ones: the host and its players then announce and look in different places
+bool made_up(const netplay_dht::key &id, const netplay_dht::key &target)
+{
+	return std::equal(id.begin(), id.begin() + 4, target.begin());
 }
 
 // 4 bytes of address and 2 of port, big-endian
@@ -210,11 +218,23 @@ bool netplay_dht::handle(const udp::endpoint &from, const u8 *data, size_t size)
 	if (id.size() != n->id.size())
 		return true;
 
-	std::copy(id.begin(), id.end(), n->id.begin());
+	key answered;
+	std::copy(id.begin(), id.end(), answered.begin());
+	if (made_up(answered, m_target))
+	{
+		m_nodes.erase(n);
+		return true;
+	}
 	n->answered = true;
 	const std::string_view token = r->string("token");
 	if (!token.empty() && token.size() <= 64)
 		n->token = token;
+	if (answered != n->id)
+	{
+		// a node of the bootstrap, or one another node told a wrong id of: its place among the closest
+		n->id = answered;
+		sort_nodes();
+	}
 	const std::string_view ip = message.string("ip");
 	if (ip.size() == 6)
 		m_seen[from] = compact(ip.data());
@@ -277,13 +297,19 @@ void netplay_dht::send(const udp::endpoint &to, const std::string &message)
 
 void netplay_dht::add_node(const key &id, const udp::endpoint &endpoint)
 {
-	if (id == m_id || std::any_of(m_nodes.begin(), m_nodes.end(), [&endpoint] (const node &n) { return n.endpoint == endpoint; }))
+	if (id == m_id || made_up(id, m_target) || std::any_of(m_nodes.begin(), m_nodes.end(), [&endpoint] (const node &n) { return n.endpoint == endpoint; }))
 		return;
 	node &n = m_nodes.emplace_back();
 	n.endpoint = endpoint;
 	n.id = id;
+	sort_nodes();
+	if (m_nodes.size() > MAX_NODES)
+		m_nodes.resize(MAX_NODES);
+}
 
-	// closest to the target first
+// closest to the target first
+void netplay_dht::sort_nodes()
+{
 	const key &target = m_target;
 	std::stable_sort(m_nodes.begin(), m_nodes.end(), [&target] (const node &a, const node &b)
 	{
@@ -292,6 +318,4 @@ void netplay_dht::add_node(const key &id, const udp::endpoint &endpoint)
 				return (a.id[i] ^ target[i]) < (b.id[i] ^ target[i]);
 		return false;
 	});
-	if (m_nodes.size() > MAX_NODES)
-		m_nodes.resize(MAX_NODES);
 }
