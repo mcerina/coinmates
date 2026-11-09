@@ -12,6 +12,10 @@
 #include "pgsl.h"
 #include "ptypes.h"
 
+// Coinmates: the same bits on every system, or a netlist's state (ripoff's sound) differs online
+// between Linux, Windows and macOS
+#include "../../util/detmath.h"
+
 #include <algorithm>
 #include <cmath>
 #include <type_traits>
@@ -139,7 +143,7 @@ namespace plib
 	static constexpr std::enable_if_t<std::is_floating_point<T>::value, T>
 	hypot(T v1, T v2) noexcept
 	{
-		return std::hypot(v1, v2);
+		return static_cast<T>(util::detmath::hypot(static_cast<double>(v1), static_cast<double>(v2)));
 	}
 
 	/// \brief exp function
@@ -152,7 +156,7 @@ namespace plib
 	static constexpr std::enable_if_t<std::is_floating_point<T>::value, T>
 	exp(T v) noexcept
 	{
-		return std::exp(v);
+		return static_cast<T>(util::detmath::exp(static_cast<double>(v)));
 	}
 
 	/// \brief log function
@@ -165,7 +169,7 @@ namespace plib
 	static constexpr std::enable_if_t<std::is_floating_point<T>::value, T>
 	log(T v) noexcept
 	{
-		return std::log(v);
+		return static_cast<T>(util::detmath::log(static_cast<double>(v)));
 	}
 
 	/// \brief tanh function
@@ -178,7 +182,7 @@ namespace plib
 	static constexpr std::enable_if_t<std::is_floating_point<T>::value, T>
 	tanh(T v) noexcept
 	{
-		return std::tanh(v);
+		return static_cast<T>(util::detmath::tanh(static_cast<double>(v)));
 	}
 
 	/// \brief floor function
@@ -204,7 +208,7 @@ namespace plib
 	static constexpr std::enable_if_t<std::is_floating_point<T>::value, T>
 	log1p(T v) noexcept
 	{
-		return std::log1p(v);
+		return static_cast<T>(util::detmath::log1p(static_cast<double>(v)));
 	}
 
 	/// \brief sin function
@@ -217,7 +221,7 @@ namespace plib
 	static constexpr std::enable_if_t<std::is_floating_point<T>::value, T>
 	sin(T v) noexcept
 	{
-		return std::sin(v);
+		return static_cast<T>(util::detmath::sin(static_cast<double>(v)));
 	}
 
 	/// \brief cos function
@@ -230,7 +234,7 @@ namespace plib
 	static constexpr std::enable_if_t<std::is_floating_point<T>::value, T>
 	cos(T v) noexcept
 	{
-		return std::cos(v);
+		return static_cast<T>(util::detmath::cos(static_cast<double>(v)));
 	}
 
 	/// \brief trunc function
@@ -274,7 +278,7 @@ namespace plib
 	template <typename T1, typename T2>
 	static inline auto pow(T1 v, T2 p) noexcept -> decltype(std::pow(v, p))
 	{
-		return std::pow(v, p);
+		return static_cast<decltype(std::pow(v, p))>(util::detmath::pow(static_cast<double>(v), static_cast<double>(p)));
 	}
 
 #if (PUSE_FLOAT128)
