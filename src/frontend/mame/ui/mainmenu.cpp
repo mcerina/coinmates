@@ -11,6 +11,8 @@
 #include "emu.h"
 #include "ui/mainmenu.h"
 
+#include "rollback.h"
+
 #include "ui/about.h"
 #include "ui/audioeffects.h"
 #include "ui/audiomix.h"
@@ -116,6 +118,10 @@ void menu_main::menu_activated()
 void menu_main::populate()
 {
 	m_phase = machine().phase();
+
+	// online: the room code, for whoever joins again
+	if (std::string status = machine().rollback() ? machine().rollback()->status() : std::string(); !status.empty())
+		set_heading(std::move(status));
 
 	item_append(_("menu-main", "Input Settings"), 0, (void *)INPUT_OPTIONS);
 

@@ -19,6 +19,7 @@
 #pragma once
 
 #include <memory>
+#include <string>
 #include <string_view>
 #include <unordered_map>
 #include <utility>
@@ -39,10 +40,24 @@ public:
 
 	// why the last session ended, for the system list to show once; empty if it wasn't told
 	static std::string take_end_message() { return std::exchange(s_end_message, std::string()); }
+
+	// frames of input delay of a system, unless the host chooses: more for the heaviest
+	static int default_delay(const game_driver &system);
+	static constexpr int MIN_DELAY = 1, MAX_DELAY = 4;   // what the host can choose in the menu
+
+	// what was typed to join, as -netplay_join takes it: a room code, or host:port; empty if neither
+	static std::string join_target(std::string_view typed);
+
+	// opens the problem form in the browser, filled in with this system's newest room log
+	static void report_problem(const emu_options &options, const game_driver &driver);
+
 	virtual ~rollback_session() = default;
 
 	// true while others share this timeline: pausing, saving and resetting are off
 	virtual bool in_session() const { return false; }
+
+	// for the menu, e.g. the room code to give to whoever joins again; empty if nothing to say
+	virtual std::string status() const { return std::string(); }
 
 	virtual void frame_inputs_begin() = 0;                 // ioport frame_update start (end of the current frame)
 	virtual void frame_inputs_port(ioport_port &port) = 0; // per port, after the OS sample

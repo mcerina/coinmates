@@ -197,6 +197,7 @@ const options_entry emu_options::s_option_entries[] =
 	{ OPTION_NETPLAY_WINDOW,                             "10",        core_options::option_type::INTEGER,    "maximum frames to roll back (host)" },
 	{ OPTION_NETPLAY_HASH_EVERY,                         "30",        core_options::option_type::INTEGER,    "frames between desync checks (host)" },
 	{ OPTION_NETPLAY_DHT,                                "router.bittorrent.com:6881;dht.transmissionbt.com:6881;router.utorrent.com:6881;dht.libtorrent.org:25401", core_options::option_type::STRING, "BitTorrent DHT nodes to start from, to find the room's players and the public address, separated by ; (empty: none)" },
+	{ OPTION_NETPLAY_LOGS,                               "",          core_options::option_type::PATH,       "write the log of every session, with the other players' logs, in this folder (empty: none)" },
 
 	{ nullptr,                                           nullptr,     core_options::option_type::HEADER,     "CORE COMM OPTIONS" },
 	{ OPTION_COMM_LOCAL_HOST,                            "0.0.0.0",   core_options::option_type::STRING,     "local address to bind to" },

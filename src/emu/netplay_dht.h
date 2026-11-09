@@ -25,7 +25,6 @@
 #include <array>
 #include <map>
 #include <optional>
-#include <random>
 #include <string>
 #include <string_view>
 #include <vector>
@@ -38,7 +37,7 @@ public:
 	using key = std::array<u8, 20>;
 
 	// bootstrap: host:port separated by ;
-	netplay_dht(udp::socket &socket, std::string_view bootstrap, std::mt19937 &rng);
+	netplay_dht(udp::socket &socket, std::string_view bootstrap);
 
 	// look for whoever announced itself on the key, and announce this socket if asked
 	void start(const key &target, bool announce);
@@ -72,7 +71,6 @@ private:
 	void add_node(const key &id, const udp::endpoint &endpoint);
 
 	udp::socket &m_socket;
-	std::mt19937 &m_rng;
 	std::vector<udp::endpoint> m_bootstrap;
 	key m_id;
 	key m_target;

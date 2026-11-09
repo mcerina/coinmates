@@ -14,6 +14,7 @@
 #include "multibyte.h"
 
 #include <algorithm>
+#include <random>
 #include <sstream>
 
 
@@ -110,12 +111,13 @@ udp::endpoint compact(const char *data)
 } // anonymous namespace
 
 
-netplay_dht::netplay_dht(udp::socket &socket, std::string_view bootstrap, std::mt19937 &rng)
+netplay_dht::netplay_dht(udp::socket &socket, std::string_view bootstrap)
 	: m_socket(socket)
-	, m_rng(rng)
 {
+	// random, from the system: it is sent to strangers
+	std::random_device device;
 	for (u8 &b : m_id)
-		b = u8(m_rng());
+		b = u8(device());
 	m_target = m_id;
 
 	udp::resolver resolver(m_socket.get_executor());
@@ -144,10 +146,10 @@ void netplay_dht::start(const key &target, bool announce)
 	for (const udp::endpoint &endpoint : m_bootstrap)
 	{
 		// no id yet: the farthest from the target
-		key far;
-		for (size_t i = 0; i < far.size(); i++)
-			far[i] = target[i] ^ 0xff;
-		add_node(far, endpoint);
+		key farthest;
+		for (size_t i = 0; i < farthest.size(); i++)
+			farthest[i] = target[i] ^ 0xff;
+		add_node(farthest, endpoint);
 	}
 }
 
