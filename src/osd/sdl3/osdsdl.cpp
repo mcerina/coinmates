@@ -523,6 +523,12 @@ void sdl_osd_interface::process_events()
 			process_window_event(event);
 			break;
 
+		case SDL_EVENT_QUIT:
+			// SIGTERM or SIGINT, e.g. Steam closing the game, or Cmd+Q on a Mac: quit as from the menu,
+			// which saves the NVRAM and, online, tells the other players
+			machine().schedule_exit();
+			break;
+
 		case SDL_EVENT_KEY_DOWN:
 			{
 				auto const window = focus_window(event.key);
