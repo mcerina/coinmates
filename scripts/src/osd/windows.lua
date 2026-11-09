@@ -36,6 +36,12 @@ function maintargetosdoptions(_target,_subtarget)
 			"imm32",
 			"version",
 		}
+		-- MSYS2's SDL3 (3.4.16) uses libiconv: linked statically, it needs it too
+		configuration { "mingw*" }
+			links {
+				"iconv",
+			}
+		configuration { }
 	end
 
 	links {
