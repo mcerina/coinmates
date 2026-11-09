@@ -1,0 +1,174 @@
+name: Coinmates
+
+# The builds of a release: Linux (flatpak), Windows (a folder to unzip) and macOS (an app, Apple
+# silicon). A tag v* makes a draft release with them; a push to a ci/* branch only builds, to try.
+# Each is built as MAME is there: Linux as Flathub's MAME, which EmuDeck installs (the manifest);
+# Windows and macOS as MAME's own CI (.github/workflows/ci-windows.yml, ci-macos.yml upstream).
+
+on:
+  push:
+    tags: ['v*']
+    branches: ['ci/**']
+
+permissions:
+  contents: read
+
+# What we add to MAME's options, everywhere (as in the flatpak manifest):
+# - SUBTARGET, SOURCES: only the drivers of the co-op games
+# - USE_QTDEBUG=0: no debugger, which would stop the game for one player only
+# - ARCHOPTS=-ffp-contract=off: no fused multiply-add, which compilers for ARM use by default: the
+#   same floating point on every system, or the players' states differ
+# - NEW_GIT_VERSION: the Coinmates version, which all the players in a room must share
+env:
+  MAKEOPTS: SUBTARGET=coinmates USE_QTDEBUG=0 ARCHOPTS=-ffp-contract=off
+  # Not in MAME's CI: ccache, kept between runs (also failed ones), so that a try after a small
+  # change takes minutes, not an hour. The sloppiness lets it cache with precompiled headers.
+  CCACHE_DIR: ${{ github.workspace }}/.ccache
+  CCACHE_MAXSIZE: 2G
+  CCACHE_SLOPPINESS: pch_defines,time_macros,include_file_mtime,include_file_ctime
+
+jobs:
+  linux:
+    runs-on: ubuntu-latest
+    container:
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
+      options: --privileged
+    steps:
+    - uses: actions/checkout@v4
+    # the action keeps flatpak-builder's state and ccache between runs (its default cache key)
+    - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+      with:
+        manifest-path: netplay/flatpak/io.github.mcerina.Coinmates.yml
+        bundle: coinmates.flatpak
+        upload-artifact: false
+    - uses: actions/upload-artifact@v4
+      with:
+        name: linux
+        path: coinmates.flatpak
+
+  windows:
+    runs-on: windows-latest
+    defaults:
+      run:
+        shell: msys2 {0}
+    steps:
+    - uses: msys2/setup-msys2@e9898307ac31d1a803454791be09ab9973336e1c # v2.31.1, pinned as in MAME's CI
+      with:
+        msystem: UCRT64
+        install: git make zip mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-python mingw-w64-ucrt-x86_64-lld mingw-w64-ucrt-x86_64-llvm mingw-w64-ucrt-x86_64-sdl3 mingw-w64-ucrt-x86_64-ccache
+    - uses: actions/checkout@v4
+    - uses: actions/cache/restore@v4
+      with:
+        path: .ccache
+        key: ccache-windows-${{ github.sha }}
+        restore-keys: ccache-windows-
+    - name: Build
+      # as MAME's CI, and the mame.exe that EmuDeck installs: the Windows OSD, with SDL3 for the
+      # joysticks (EmuDeck's "sdljoy") and the sound. -j4: the runner has 4 cores
+      env:
+        OVERRIDE_AR: llvm-ar
+        OVERRIDE_CC: ccache gcc
+        OVERRIDE_CXX: ccache g++
+      run: make -j4 $MAKEOPTS USE_SDL3=1 ARCHOPTS="-ffp-contract=off -fuse-ld=lld" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,) NEW_GIT_VERSION=$(netplay/version.sh)
+    - uses: actions/cache/save@v4
+      if: always()
+      with:
+        path: .ccache
+        key: ccache-windows-${{ github.sha }}
+    - name: Validate
+      # as MAME's CI. Allowed: the errors of building part of MAME, clones whose parent is in a file
+      # that sources.txt leaves out (in segas16a.cpp and gaelco.cpp, of no game in games.txt)
+      run: |
+        ./coinmates -validate > validate.txt || true
+        cat validate.txt
+        n=$(grep -c 'clone of nonexistent driver' validate.txt || true)
+        ! grep 'in total' validate.txt | grep -qv "($n errors"
+    - name: Package
+      # unzipped anywhere, it keeps its settings next to it
+      run: |
+        d=Coinmates
+        mkdir -p $d/cfg
+        cp coinmates.exe netplay/windows/coinmates.ini netplay/games.txt COPYING $d/
+        cp netplay/flatpak/default.cfg $d/cfg/
+        printf 'last_used_filter Available\n' > $d/ui.ini
+        ldd coinmates.exe | awk '$3 ~ /ucrt64/ { print $3 }' | xargs -r cp -t $d/
+        zip -r coinmates-windows.zip $d
+    - uses: actions/upload-artifact@v4
+      with:
+        name: windows
+        path: coinmates-windows.zip
+
+  macos:
+    runs-on: macos-latest
+    steps:
+    - uses: actions/checkout@v4
+    # as MAME's CI (python3, sdl3); dylibbundler and librsvg to package the app
+    - run: brew install python3 sdl3 dylibbundler librsvg ccache
+    - uses: actions/cache/restore@v4
+      with:
+        path: .ccache
+        key: ccache-macos-${{ github.sha }}
+        restore-keys: ccache-macos-
+    - name: Build
+      # -j3: the runner has 3 cores
+      env:
+        OVERRIDE_CC: ccache clang
+        OVERRIDE_CXX: ccache clang++
+      run: make -j3 USE_LIBSDL=1 $MAKEOPTS SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd, -) NEW_GIT_VERSION=$(netplay/version.sh)
+    - uses: actions/cache/save@v4
+      if: always()
+      with:
+        path: .ccache
+        key: ccache-macos-${{ github.sha }}
+    - name: Validate
+      # as MAME's CI. Allowed: the errors of building part of MAME, clones whose parent is in a file
+      # that sources.txt leaves out (in segas16a.cpp and gaelco.cpp, of no game in games.txt)
+      run: |
+        ./coinmates -validate > validate.txt || true
+        cat validate.txt
+        n=$(grep -c 'clone of nonexistent driver' validate.txt || true)
+        ! grep 'in total' validate.txt | grep -qv "($n errors"
+    - name: Package
+      # an app with its libraries; not signed by a developer: the first time, right click, Open
+      run: |
+        c=Coinmates.app/Contents
+        mkdir -p $c/MacOS $c/Resources $c/libs icon.iconset
+        cp coinmates netplay/macos/launch $c/MacOS/
+        cp netplay/macos/Info.plist $c/
+        plutil -replace CFBundleShortVersionString -string "$(netplay/version.sh)" $c/Info.plist
+        plutil -replace CFBundleVersion -string "$(netplay/version.sh)" $c/Info.plist
+        cp netplay/flatpak/default.cfg netplay/games.txt $c/Resources/
+        icon() { rsvg-convert -w $1 -h $1 netplay/flatpak/io.github.mcerina.Coinmates.svg -o $2; }
+        for s in 16 32 128 256 512; do
+          icon $s icon.iconset/icon_${s}x${s}.png
+          icon $((s * 2)) icon.iconset/icon_${s}x${s}@2x.png
+        done
+        iconutil -c icns icon.iconset -o $c/Resources/Coinmates.icns
+        dylibbundler -od -b -x $c/MacOS/coinmates -d $c/libs -p @executable_path/../libs/
+        codesign --force --deep -s - Coinmates.app
+        ditto -c -k --keepParent Coinmates.app coinmates-macos.zip
+    - uses: actions/upload-artifact@v4
+      with:
+        name: macos
+        path: coinmates-macos.zip
+
+  release:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: [linux, windows, macos]
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        path: src
+    - uses: actions/download-artifact@v4
+      with:
+        merge-multiple: true
+    - name: Steam artwork
+      run: zip -j coinmates-steam-art.zip src/netplay/steam/coinmates-*.png
+    - name: Draft release
+      env:
+        GH_TOKEN: ${{ github.token }}
+      run: gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "Coinmates ${GITHUB_REF_NAME#v}"
+        --notes "Built from $GITHUB_SHA." coinmates.flatpak coinmates-windows.zip coinmates-macos.zip coinmates-steam-art.zip

@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- What app stores (Flathub, Discover on the Steam Deck, GNOME Software) show about Coinmates.
+     At every release: a new <release> on top, and the screenshots' URLs pointing to its tag. -->
+<component type="desktop-application">
+  <id>io.github.mcerina.Coinmates</id>
+  <name>Coinmates</name>
+  <summary>Play co-op arcade games online</summary>
+  <developer id="io.github.mcerina">
+    <name>Matteo Cerina</name>
+  </developer>
+  <metadata_license>CC0-1.0</metadata_license>
+  <project_license>GPL-2.0-or-later</project_license>
+
+  <description>
+    <p>
+      Co-op arcade games with your friends, online. Coinmates is based on MAME and lets 2 to 4
+      players beat up, shoot and race through the arcade co-op classics over the internet, without
+      the input lag of classic netplay. It uses rollback, like modern fighting games: your inputs
+      act at once, and when a friend's input arrives late, the last few frames are quietly redone.
+    </p>
+    <ul>
+      <li>Also for Windows and Mac, and players on different systems play together</li>
+      <li>No accounts and no servers to run: the host gets a 6-character room code, and the others type it in</li>
+      <li>Whoever drops out can join again, and the game goes on meanwhile</li>
+      <li>Players at home find each other even without internet</li>
+      <li>Ready to play with a controller or the keyboard</li>
+    </ul>
+    <p>
+      ROMs are not included: Coinmates looks for them in Emulation/roms/arcade in your home, or on
+      an SD card (the folders of EmuDeck, which isn't needed), and needs the sets of MAME 0.289.
+      256 co-op games are checked for netplay.
+    </p>
+  </description>
+
+  <launchable type="desktop-id">io.github.mcerina.Coinmates.desktop</launchable>
+
+  <url type="homepage">https://github.com/mcerina/coinmates</url>
+  <url type="bugtracker">https://github.com/mcerina/coinmates/issues</url>
+  <url type="vcs-browser">https://github.com/mcerina/coinmates</url>
+
+  <screenshots>
+    <screenshot type="default">
+      <caption>Pick a game among the ones you have</caption>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.0.0/netplay/readme/1-list.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Play alone, host a room, or join one</caption>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.0.0/netplay/readme/2-choices.png</image>
+    </screenshot>
+    <screenshot>
+      <caption>Join with the room code a friend sent you</caption>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.0.0/netplay/readme/3-join.png</image>
+    </screenshot>
+  </screenshots>
+
+  <branding>
+    <color type="primary" scheme_preference="light">#f2c94c</color>
+    <color type="primary" scheme_preference="dark">#121320</color>
+  </branding>
+
+  <categories>
+    <category>Game</category>
+    <category>ArcadeGame</category>
+  </categories>
+  <keywords>
+    <keyword>MAME</keyword>
+    <keyword>arcade</keyword>
+    <keyword>emulator</keyword>
+    <keyword>netplay</keyword>
+    <keyword>rollback</keyword>
+    <keyword>co-op</keyword>
+    <keyword>multiplayer</keyword>
+  </keywords>
+
+  <supports>
+    <control>keyboard</control>
+  </supports>
+  <recommends>
+    <control>gamepad</control>
+    <internet>always</internet>
+  </recommends>
+
+  <content_rating type="oars-1.1"/>
+
+  <releases>
+    <release version="1.0.0" date="2026-11-10">
+      <description>
+        <p>The first release, for Linux, Windows and Mac.</p>
+        <ul>
+          <li>Rollback netplay for 2 to 4 players in 256 co-op arcade games</li>
+          <li>Rooms with a code, found without servers</li>
+          <li>Whoever leaves can join again during the game</li>
+          <li>Report a Problem, with the log of the room</li>
+        </ul>
+      </description>
+    </release>
+  </releases>
+</component>

@@ -1,0 +1,11 @@
+// license:BSD-3-Clause
+//============================================================
+//
+//  coinmates.rc - resources of Coinmates for Windows: its icon,
+//  made by netplay/steam/render.py
+//
+//============================================================
+
+1                       24      MOVEABLE PURE   "coinmates.man"
+
+2                       ICON    DISCARDABLE     "coinmates.ico"

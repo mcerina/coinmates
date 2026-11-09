@@ -36,7 +36,8 @@ if __name__ == '__main__':
 
     try:
         with io.open(options.input, 'r') as verinfo:
-            verfull, vermajor, verminor = extract_version(verinfo)
+            text = verinfo.read()
+            verfull, vermajor, verminor = extract_version(text.splitlines())
             verbuild = '0'
     except IOError as e:
         sys.stderr.write("Error reading source file '%s': %s\n" % (options.input, e))
@@ -111,19 +112,28 @@ if __name__ == '__main__':
                 '#include "${resources}"\n')
 
     internal = options.target + '_' + options.subtarget if options.target != options.subtarget else options.target
+    coinmates = options.subtarget == 'coinmates'
+    prerelease = verbuild != '0'
+    if coinmates:
+        # its own version: a release (1.2.3), or else a commit, as numbers 0.0.0
+        revision = re.search(r'BARE_VCS_REVISION\s+"([^"]*)"', text).group(1)
+        release = re.fullmatch(r'(\d+)\.(\d+)\.(\d+)', revision)
+        verfull = revision
+        vermajor, verminor, verbuild = release.groups() if release else ('0', '0', '0')
+        prerelease = not release
     text = template.substitute(
             version=verfull,
-            major=vermajor, minor=verminor, build='0', subbuild='0',
+            major=vermajor, minor=verminor, build=verbuild, subbuild='0',
             author='MAMEdev and contributors',
-            comments='Multi-purpose emulation framework',
-            company='MAMEdev',
-            filedesc='MAME',
+            comments=('Co-op arcade games online, based on MAME' if coinmates else 'Multi-purpose emulation framework'),
+            company=('github.com/mcerina/coinmates' if coinmates else 'MAMEdev'),
+            filedesc=('Coinmates' if coinmates else 'MAME'),
             internal=internal,
             original=options.executable,
-            product=('MAME' if options.target == 'mame' else options.target),
-            rdns=('org.mamedev.' + internal),
+            product=('Coinmates' if coinmates else 'MAME' if options.target == 'mame' else options.target),
+            rdns=('io.github.mcerina.Coinmates' if coinmates else 'org.mamedev.' + internal),
             copyright='\u00a9 1997-2026 MAMEdev and contributors',
-            winfileflags=('0x0L' if verbuild == '0' else 'VS_FF_PRERELEASE'),
+            winfileflags=('VS_FF_PRERELEASE' if prerelease else '0x0L'),
             resources=(options.resources or 'mame.rc'))
 
     if options.o is not None:

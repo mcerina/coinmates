@@ -1,10 +1,14 @@
 # Coinmates: co-op arcade games with friends, online. Based on MAME.
 # Built from the committed state of this repository by ../../../build-flatpak.sh
 app-id: io.github.mcerina.Coinmates
-runtime: org.freedesktop.Platform
-runtime-version: '25.08'
-sdk: org.freedesktop.Sdk
+# As Flathub's org.mamedev.MAME, which EmuDeck installs on the Steam Deck: same runtime (already
+# on the Deck of whoever has EmuDeck) and same make options. What differs is commented.
+runtime: org.kde.Platform
+runtime-version: '6.11'
+sdk: org.kde.Sdk
 command: launch
+# as Flathub's MAME, but its home and host access become only the folders below: whoever joins a
+# room loads the host's machine state, so Coinmates sees as little as it can
 finish-args:
   - --share=network
   - --share=ipc
@@ -12,41 +16,36 @@ finish-args:
   - --socket=fallback-x11
   - --socket=pulseaudio
   - --device=all                       # controllers
+  - --allow=bluetooth
   - --filesystem=home/Emulation:ro     # the ROMs, where EmuDeck keeps them
   - --filesystem=/run/media:ro         # or on an SD card
+  - --filesystem=xdg-documents/Coinmates:create   # the room logs
 modules:
-  # MAME draws its UI fonts with it, and the runtime doesn't have it
-  - name: SDL2_ttf
-    buildsystem: cmake-ninja
-    builddir: true
-    config-opts:
-      - -DSDL2TTF_VENDORED=OFF
-      - -DSDL2TTF_HARFBUZZ=OFF
-      - -DSDL2TTF_SAMPLES=OFF
-    cleanup:
-      - /include
-      - /lib/cmake
-      - /lib/pkgconfig
-    sources:
-      - type: archive
-        url: https://github.com/libsdl-org/SDL_ttf/releases/download/release-2.24.0/SDL2_ttf-2.24.0.tar.gz
-        sha256: 0b2bf1e7b6568adbdbc9bb924643f79d9dedafe061fa1ed687d1d9ac4e453bfd
   - name: mame
     buildsystem: simple
     build-options:
+      no-debuginfo: true
       strip: true
     build-commands:
-      - make -j$FLATPAK_BUILDER_N_JOBS SUBTARGET=coinmates SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,)
-        USE_QTDEBUG=0 NO_USE_PORTAUDIO=1 NO_USE_PIPEWIRE=1 PRECOMPILE=0 NEW_GIT_VERSION=$(netplay/version.sh)
+      # as Flathub's MAME: CFLAGS, OSD, USE_SYSTEM_LIB_FLAC, LDOPTS. Ours:
+      # - SUBTARGET, SOURCES: only the drivers of the co-op games (a build of minutes, not hours)
+      # - USE_QTDEBUG=0: no debugger, which would stop the game for one player only
+      # - ARCHOPTS=-ffp-contract=off: the same floating point on every system, or the players' states differ
+      # - NEW_GIT_VERSION: the Coinmates version, which all the players in a room must share
+      # - no TOOLS, no SDL_INI_PATH: we ship only the emulator, and the launcher passes the options
+      - make -j$FLATPAK_BUILDER_N_JOBS CFLAGS+=-Wno-error=restrict OSD=sdl3 USE_SYSTEM_LIB_FLAC=1 LDOPTS=-Wl,-s
+        SUBTARGET=coinmates SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,)
+        USE_QTDEBUG=0 ARCHOPTS=-ffp-contract=off NEW_GIT_VERSION=$(netplay/version.sh)
       - install -Dm755 coinmates /app/bin/coinmates
       - install -Dm755 netplay/flatpak/launch /app/bin/launch
-      - install -Dm644 netplay/games.txt /app/share/coinmates/games.txt
       - install -Dm644 netplay/flatpak/default.cfg /app/share/coinmates/default.cfg
       # the entry in the menus, and in Steam's "Add a Non-Steam Game"
       - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.desktop /app/share/applications/io.github.mcerina.Coinmates.desktop
+      # what Discover and Flathub show
+      - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.metainfo.xml /app/share/metainfo/io.github.mcerina.Coinmates.metainfo.xml
       - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.svg /app/share/icons/hicolor/scalable/apps/io.github.mcerina.Coinmates.svg
       # Steam shows only PNG icons
-      - for s in 64 128 256; do install -d /app/share/icons/hicolor/${s}x${s}/apps;
+      - for s in 16 24 32 64 128 256; do install -d /app/share/icons/hicolor/${s}x${s}/apps;
         rsvg-convert -w $s -h $s netplay/flatpak/io.github.mcerina.Coinmates.svg -o /app/share/icons/hicolor/${s}x${s}/apps/io.github.mcerina.Coinmates.png; done
     sources:
       - type: git
