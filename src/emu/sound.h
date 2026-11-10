@@ -98,6 +98,9 @@ class sound_manager
 
 public:
 	void set_discard_output(bool discard) { m_discard_output = discard; }
+	// rollback netplay: the speakers' samples reach the OSD and the recordings this much later; until
+	// then a resimulation of their time replaces them with the corrected ones
+	void set_output_delay(const attotime &delay);
 
 	using sample_t = sound_stream::sample_t;
 
@@ -211,8 +214,8 @@ public:
 	void set_resampler_hq_phases(u32 phases);
 
 private:
-	bool m_effects_discard = false;                 // the discard flag of the block the effects thread takes
 	bool m_discard_output = false;                  // rollback resimulation: drop samples sent to the OSD
+	attotime m_output_delay = attotime::zero;
 
 	struct effect_step {
 		std::unique_ptr<audio_effect> m_effect;
@@ -241,6 +244,11 @@ private:
 		emu::detail::output_buffer_flat<sample_t> m_effects_buffer;
 
 		std::vector<effect_step> m_effects;
+
+		// the samples of this update period, and of the earlier ones not output yet (with an output
+		// delay), by the time of the update that ends them
+		std::vector<std::vector<sample_t>> m_pending;
+		std::vector<std::pair<attotime, std::vector<std::vector<sample_t>>>> m_delayed;   // (vector: a deque would make speaker_info copied, not moved)
 
 		speaker_info(speaker_device &dev, u32 rate, u32 first_output);
 	};
@@ -327,6 +335,7 @@ private:
 	static std::vector<u32> find_channel_mapping(const osd::channel_position &pos, const osd::audio_info::node_info *node);
 	void startup_cleanups();
 	void streams_update();
+	bool output_speakers(attotime now);
 	template<bool is_output, typename S> void apply_osd_changes(std::vector<S> &streams);
 	void osd_information_update();
 	void generate_mapping();

@@ -317,27 +317,65 @@ void sound_manager::input_get(int id, sound_stream &stream)
 
 void sound_manager::output_push(int id, sound_stream &stream)
 {
+	// held until the end of the update (output_speakers)
 	auto &spk = m_speakers[id];
-	auto &out = spk.m_buffer;
 	auto &inp = stream.m_input_buffer;
 	int samples = stream.samples();
 	int channels = stream.input_count();
-	out.prepare_space(samples);
+	spk.m_pending.resize(channels);
 	for(int channel = 0; channel != channels; channel ++)
-		std::copy(inp[channel].begin(), inp[channel].begin() + samples, out.ptrw(channel, 0));
-	out.commit(samples);
+		spk.m_pending[channel].insert(spk.m_pending[channel].end(), inp[channel].begin(), inp[channel].begin() + samples);
+}
 
-	m_record_samples = samples;
-	s16 *outb = m_record_buffer.data() + spk.m_first_output;
-	for(int channel = 0; channel != channels; channel ++) {
-		s16 *outb1 = outb;
-		const float *inb = inp[channel].data();
-		for(int sample = 0; sample != samples; sample++) {
-			*outb1 = std::clamp(int(*inb++ * 32768), -32768, 32767);
-			outb1 += m_outputs_count;
-		}
-		outb++;
+// a new delay starts with nothing waiting: the samples of an earlier one would come out all at once
+void sound_manager::set_output_delay(const attotime &delay)
+{
+	m_output_delay = delay;
+	for(auto &spk : m_speakers) {
+		spk.m_pending.clear();
+		spk.m_delayed.clear();
 	}
+}
+
+// at the end of every update: the samples wait for the output delay, while a resimulation of their
+// time replaces them (the update timer is in the state: its times come again). False if nothing
+// is output, as while resimulating.
+bool sound_manager::output_speakers(attotime now)
+{
+	bool output = false;
+	m_record_samples = 0;
+	const u32 room = m_record_buffer.size() / m_outputs_count;
+	for(auto &spk : m_speakers) {
+		auto block = std::find_if(spk.m_delayed.begin(), spk.m_delayed.end(), [&now] (const auto &b) { return b.first == now; });
+		if(block != spk.m_delayed.end())
+			block->second = std::move(spk.m_pending);
+		else if(!m_discard_output)
+			spk.m_delayed.emplace_back(now, std::move(spk.m_pending));
+		spk.m_pending.clear();
+		if(m_discard_output)
+			continue;
+
+		u32 done = 0;
+		while(!spk.m_delayed.empty() && spk.m_delayed.front().first + m_output_delay <= now) {
+			const auto &channels = spk.m_delayed.front().second;
+			const u32 count = channels.empty() ? 0 : channels[0].size();
+			const u32 recorded = done < room ? std::min(count, room - done) : 0;
+			s16 *outb = m_record_buffer.data() + done * m_outputs_count + spk.m_first_output;
+			spk.m_buffer.prepare_space(count);
+			for(u32 channel = 0; channel != channels.size(); channel ++, outb ++) {
+				std::copy(channels[channel].begin(), channels[channel].end(), spk.m_buffer.ptrw(channel, 0));
+				s16 *outb1 = outb;
+				for(u32 sample = 0; sample != recorded; sample ++, outb1 += m_outputs_count)
+					*outb1 = std::clamp(int(channels[channel][sample] * 32768), -32768, 32767);
+			}
+			spk.m_buffer.commit(count);
+			done += count;
+			output = output || count;
+			spk.m_delayed.erase(spk.m_delayed.begin());
+		}
+		m_record_samples = std::max(m_record_samples, done);
+	}
+	return output;
 }
 
 void sound_manager::run_effects()
@@ -351,8 +389,6 @@ void sound_manager::run_effects()
 
 		std::unique_lock<std::mutex> lock(m_effects_mutex);
 #endif
-		bool const discard = m_effects_discard;
-
 		// Copy the data to the effects threads, expanding as needed when -speed is in use
 		double sf = machine().video().speed_factor();
 		if(sf == 1000) {
@@ -484,7 +520,7 @@ void sound_manager::run_effects()
 
 		// Send the result to the osd
 		for(auto &stream : m_osd_output_streams)
-			if(stream.m_samples && !discard)
+			if(stream.m_samples)
 				machine().osd().sound_stream_sink_update(stream.m_id, stream.m_buffer.data(), stream.m_samples);
 
 		machine().osd().sound_end_update();
@@ -2013,14 +2049,16 @@ void sound_manager::streams_update()
 
 		m_effects_prev_time = m_effects_cur_time;
 		m_effects_cur_time = now;
-		m_effects_discard = m_discard_output;
 
 		for(sound_stream *stream : m_ordered_streams)
 			stream->update_nodeps();
+		// the effects aren't made for updates with no samples (resimulating, or the start of an
+		// output delay): their buffers would be indexed past their end
+		if(output_speakers(now))
 #ifndef SOUND_DISABLE_THREADING
-		m_effects_condition.notify_all();
+			m_effects_condition.notify_all();
 #else
-		run_effects();
+			run_effects();
 #endif
 	}
 

@@ -28,6 +28,7 @@
       fault=<frame>     corrupt one byte of RAM at this frame
       dump=<from>:<to>  write <path>.<frame>.state for these confirmed frames
       draw=1            draw while resimulating: state computed while drawing then stops differing
+      audio=<ms>        the sound's delay, instead of AUDIO_DELAY_MS
 
 ***************************************************************************/
 
@@ -41,6 +42,7 @@
 #include "osdepend.h"
 #include "osdfile.h"
 #include "screen.h"
+#include "sound.h"
 #include "video.h"
 
 #include "asio.h"
@@ -90,6 +92,7 @@ constexpr u32 PEER_TIMEOUT_MS = 10000;
 constexpr u32 MESH_TIMEOUT_MS = 15000;
 constexpr s64 BACK_FRAMES = 180;        // for a late joiner to catch up after its state comes; the others play on
 constexpr size_t TAG_SIZE = 8;
+constexpr u32 AUDIO_DELAY_MS = 60;      // 3 frames of the 20 ms sound updates: rollbacks within it aren't heard; ~125 ms isn't noticed
 constexpr u32 JOIN_TIMEOUT_MS = 30000;  // finding the room takes seconds; waiting for the start has no limit
 constexpr u32 RESYNC_RETRY_MS = 5000;
 constexpr u32 PUNCH_MS = 250;
@@ -617,6 +620,7 @@ private:
 	u32 m_cut_ms = 0, m_cut_until = 0;
 	bool m_cut_in = true;           // cut: no packets either way; mute: none sent
 	int m_deaf = -1;                // in the game, the packets of this player are lost
+	u32 m_audio_delay_ms = AUDIO_DELAY_MS;
 	u16 m_test_port = 0;            // instead of LAN_PORT: the same after a restart, as at home
 	static inline bool s_cut_done = false;
 	std::mt19937 m_rng;
@@ -668,6 +672,7 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 			else if ((k == "cut" || k == "mute") && !s_cut_done) { long long f; unsigned ms; if (std::sscanf(v.c_str(), "%lld:%u", &f, &ms) == 2) { m_cut_frame = f; m_cut_ms = ms; m_cut_in = k == "cut"; } }
 			else if (k == "deaf" && !m_rejoining) m_deaf = std::stoi(v) - 1;
 			else if (k == "port") m_test_port = u16(std::stoi(v));
+			else if (k == "audio") m_audio_delay_ms = u32(std::stoul(v));
 		}
 		if (!m_log_path.empty())
 			m_hash_log = std::fopen((m_log_path + ".hash.csv").c_str(), "w");
@@ -780,6 +785,7 @@ netplay_session::~netplay_session()
 		std::fclose(m_hash_log);
 	if (m_slowed)
 		m_machine.video().set_speed_factor(m_base_speed);
+	m_machine.sound().set_output_delay(attotime::zero);
 }
 
 
@@ -1186,6 +1192,7 @@ void netplay_session::finish_lobby()
 		m_peers[p].frame_rx_ms = now;
 	}
 	m_session_start = osd_ticks();
+	m_machine.sound().set_output_delay(attotime::from_msec(m_audio_delay_ms));
 	m_machine.popmessage("Player %d of %d", m_me + 1, m_players);
 	note("session started as player %d of %d, delay %d, window %d", m_me + 1, m_players, m_delay, m_window);
 }
