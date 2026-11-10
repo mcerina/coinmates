@@ -1253,11 +1253,7 @@ void dcs_audio_device::denver_alloc_dmadac()
 {
 	int enable = DENV_MUTE;
 	for (int chan = 0; chan < m_channels; chan++)
-	{
-		char buffer[10];
-		sprintf(buffer, "dac%d", chan + 1);
-		m_dmadac[chan] = subdevice<dmadac_sound_device>(buffer);
-	}
+		m_dmadac[chan] = subdevice<dmadac_sound_device>(string_format("dac%d", chan + 1));
 	dmadac_enable(&m_dmadac[0], m_channels, enable);
 	if (m_channels < 6)
 		dmadac_enable(&m_dmadac[m_channels], 6 - m_channels, false);
