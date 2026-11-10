@@ -20,7 +20,8 @@ permissions:
 #   same floating point on every system, or the players' states differ
 # - ARCHOPTS=-fsanitize=bounds, trapping: an array index out of bounds stops the game instead of
 #   writing in memory (a joiner loads the host's state, and drivers use its values as indices); on
-#   Windows and macOS also the checks of the C++ library, which on Linux come with the SDK's CFLAGS
+#   Windows and macOS also the checks of the C++ library, and on Windows the stack protector and
+#   FORTIFY: on Linux these come with the SDK's CFLAGS, on macOS the last two with Apple's tools
 # - NEW_GIT_VERSION: the Coinmates version, which all the players in a room must share
 env:
   MAKEOPTS: SUBTARGET=coinmates USE_QTDEBUG=0
@@ -73,7 +74,7 @@ jobs:
         OVERRIDE_AR: llvm-ar
         OVERRIDE_CC: ccache gcc
         OVERRIDE_CXX: ccache g++
-      run: make -j4 $MAKEOPTS USE_SDL3=1 ARCHOPTS="$ARCH -D_GLIBCXX_ASSERTIONS -fuse-ld=lld" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,) NEW_GIT_VERSION=$(netplay/version.sh)
+      run: make -j4 $MAKEOPTS USE_SDL3=1 ARCHOPTS="$ARCH -D_GLIBCXX_ASSERTIONS -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fuse-ld=lld" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,) NEW_GIT_VERSION=$(netplay/version.sh)
     - uses: actions/cache/save@v6
       if: always()
       with:
