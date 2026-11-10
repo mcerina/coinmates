@@ -1,7 +1,8 @@
 name: Coinmates
 
-# The builds of a release: Linux (flatpak), Windows (a folder to unzip) and macOS (an app, Apple
-# silicon). A tag v* makes a draft release with them; a push to a ci/* branch only builds, to try.
+# The builds of a release: Linux (flatpak), Windows (a folder to unzip) and macOS (an app for Apple
+# silicon, one for Intel). A tag v* makes a draft release with them; a push to a ci/* branch only
+# builds, to try.
 # Each is built as MAME is there: Linux as Flathub's MAME, which EmuDeck installs (the manifest);
 # Windows and macOS as MAME's own CI (.github/workflows/ci-windows.yml, ci-macos.yml upstream).
 
@@ -104,27 +105,44 @@ jobs:
         path: coinmates-windows.zip
 
   macos:
-    runs-on: macos-latest
+    # Apple silicon as MAME's CI; also Intel, which MAME's CI doesn't build, for a player's Intel
+    # Mac: the same job on GitHub's last Intel image (until fall 2027)
+    strategy:
+      matrix:
+        include:
+        - { runner: macos-latest, zip: coinmates-macos }
+        - { runner: macos-15-intel, zip: coinmates-macos-intel }
+    runs-on: ${{ matrix.runner }}
     steps:
     - uses: actions/checkout@main
-    # as MAME's CI (python3, sdl3); dylibbundler and librsvg to package the app
-    - run: brew install python3 sdl3 dylibbundler librsvg ccache
+    # as MAME's CI (python3); librsvg for the icon
+    - run: brew install python3 librsvg ccache
+    - name: SDL3
+      # brew's, as MAME's CI, needs the runner's macOS (26 on macos-latest); SDL's own framework, as
+      # MAME's build instructions for macOS, runs on macOS 11 on Apple silicon and older on Intel
+      run: |
+        curl -sSfLo sdl.dmg https://github.com/libsdl-org/SDL/releases/download/release-3.4.18/SDL3-3.4.18.dmg
+        echo "c1adf3da91108dbc3e4205da5dacebc203085d283fa89e86eb2c889abd03a853  sdl.dmg" | shasum -a 256 -c
+        hdiutil attach -quiet -mountpoint sdlvol sdl.dmg
+        mkdir sdl && cp -R sdlvol/SDL3.xcframework/macos-arm64_x86_64/SDL3.framework sdl/
+        hdiutil detach -quiet sdlvol
     - uses: actions/cache/restore@v6
       with:
         path: .ccache
-        key: ccache-macos-${{ github.sha }}
-        restore-keys: ccache-macos-
+        key: ccache-${{ matrix.zip }}-${{ github.sha }}
+        restore-keys: ccache-${{ matrix.zip }}-
     - name: Build
-      # -j3: the runner has 3 cores
+      # macOS 11, as Info.plist: the first for Apple silicon, and Intel Macs from 2013-2014; without
+      # it the binary asks for the runner's macOS
       env:
         OVERRIDE_CC: ccache clang
         OVERRIDE_CXX: ccache clang++
-      run: make -j3 USE_LIBSDL=1 $MAKEOPTS ARCHOPTS="$ARCH -D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd, -) NEW_GIT_VERSION=$(netplay/version.sh)
+      run: make -j$(sysctl -n hw.ncpu) SDL_FRAMEWORK_PATH=$PWD/sdl $MAKEOPTS ARCHOPTS="$ARCH -mmacosx-version-min=11.0 -D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd, -) NEW_GIT_VERSION=$(netplay/version.sh)
     - uses: actions/cache/save@v6
       if: always()
       with:
         path: .ccache
-        key: ccache-macos-${{ github.sha }}
+        key: ccache-${{ matrix.zip }}-${{ github.sha }}
     - name: Validate
       # as MAME's CI. Allowed: the errors of building part of MAME, clones whose parent is in a file
       # that sources.txt leaves out (in segas16a.cpp and gaelco.cpp, of no game in games.txt)
@@ -137,7 +155,7 @@ jobs:
       # an app with its libraries; not signed by a developer: the first time, right click, Open
       run: |
         c=Coinmates.app/Contents
-        mkdir -p $c/MacOS $c/Resources $c/libs icon.iconset
+        mkdir -p $c/MacOS $c/Resources $c/Frameworks icon.iconset
         cp coinmates netplay/macos/launch $c/MacOS/
         cp netplay/macos/Info.plist $c/
         plutil -replace CFBundleShortVersionString -string "$(netplay/version.sh)" $c/Info.plist
@@ -149,13 +167,17 @@ jobs:
           icon $((s * 2)) icon.iconset/icon_${s}x${s}@2x.png
         done
         iconutil -c icns icon.iconset -o $c/Resources/Coinmates.icns
-        dylibbundler -od -b -x $c/MacOS/coinmates -d $c/libs -p @executable_path/../libs/
+        cp -R sdl/SDL3.framework $c/Frameworks/
+        install_name_tool -rpath $PWD/sdl @executable_path/../Frameworks $c/MacOS/coinmates
+        for f in $c/MacOS/coinmates $c/Frameworks/SDL3.framework/SDL3; do
+          ! otool -l $f | awk '$1 == "minos" && $2 + 0 > 11' | grep -q .
+        done
         codesign --force --deep -s - Coinmates.app
-        ditto -c -k --keepParent Coinmates.app coinmates-macos.zip
+        ditto -c -k --keepParent Coinmates.app ${{ matrix.zip }}.zip
     - uses: actions/upload-artifact@main
       with:
-        name: macos
-        path: coinmates-macos.zip
+        name: ${{ matrix.zip }}
+        path: ${{ matrix.zip }}.zip
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
@@ -176,4 +198,5 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "Coinmates ${GITHUB_REF_NAME#v}"
-        --notes "Built from $GITHUB_SHA." coinmates.flatpak coinmates-windows.zip coinmates-macos.zip coinmates-steam-art.zip
+        --notes "Built from $GITHUB_SHA." coinmates.flatpak coinmates-windows.zip coinmates-macos.zip coinmates-macos-intel.zip
+        coinmates-steam-art.zip
