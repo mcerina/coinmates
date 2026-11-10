@@ -18,9 +18,13 @@ permissions:
 # - USE_QTDEBUG=0: no debugger, which would stop the game for one player only
 # - ARCHOPTS=-ffp-contract=off: no fused multiply-add, which compilers for ARM use by default: the
 #   same floating point on every system, or the players' states differ
+# - ARCHOPTS=-fsanitize=bounds, trapping: an array index out of bounds stops the game instead of
+#   writing in memory (a joiner loads the host's state, and drivers use its values as indices); on
+#   Windows and macOS also the checks of the C++ library, which on Linux come with the SDK's CFLAGS
 # - NEW_GIT_VERSION: the Coinmates version, which all the players in a room must share
 env:
-  MAKEOPTS: SUBTARGET=coinmates USE_QTDEBUG=0 ARCHOPTS=-ffp-contract=off
+  MAKEOPTS: SUBTARGET=coinmates USE_QTDEBUG=0
+  ARCH: -ffp-contract=off -fsanitize=bounds -fsanitize-undefined-trap-on-error
   # Not in MAME's CI: ccache, kept between runs (also failed ones), so that a try after a small
   # change takes minutes, not an hour. The sloppiness lets it cache with precompiled headers.
   CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -34,14 +38,14 @@ jobs:
       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
       options: --privileged
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@main
     # the action keeps flatpak-builder's state and ccache between runs (its default cache key)
     - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
       with:
         manifest-path: netplay/flatpak/io.github.mcerina.Coinmates.yml
         bundle: coinmates.flatpak
         upload-artifact: false
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@main
       with:
         name: linux
         path: coinmates.flatpak
@@ -56,8 +60,8 @@ jobs:
       with:
         msystem: UCRT64
         install: git make zip mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-python mingw-w64-ucrt-x86_64-lld mingw-w64-ucrt-x86_64-llvm mingw-w64-ucrt-x86_64-sdl3 mingw-w64-ucrt-x86_64-ccache
-    - uses: actions/checkout@v4
-    - uses: actions/cache/restore@v4
+    - uses: actions/checkout@main
+    - uses: actions/cache/restore@v6
       with:
         path: .ccache
         key: ccache-windows-${{ github.sha }}
@@ -69,8 +73,8 @@ jobs:
         OVERRIDE_AR: llvm-ar
         OVERRIDE_CC: ccache gcc
         OVERRIDE_CXX: ccache g++
-      run: make -j4 $MAKEOPTS USE_SDL3=1 ARCHOPTS="-ffp-contract=off -fuse-ld=lld" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,) NEW_GIT_VERSION=$(netplay/version.sh)
-    - uses: actions/cache/save@v4
+      run: make -j4 $MAKEOPTS USE_SDL3=1 ARCHOPTS="$ARCH -D_GLIBCXX_ASSERTIONS -fuse-ld=lld" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,) NEW_GIT_VERSION=$(netplay/version.sh)
+    - uses: actions/cache/save@v6
       if: always()
       with:
         path: .ccache
@@ -93,7 +97,7 @@ jobs:
         printf 'last_used_filter Available\n' > $d/ui.ini
         ldd coinmates.exe | awk '$3 ~ /ucrt64/ { print $3 }' | xargs -r cp -t $d/
         zip -r coinmates-windows.zip $d
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@main
       with:
         name: windows
         path: coinmates-windows.zip
@@ -101,10 +105,10 @@ jobs:
   macos:
     runs-on: macos-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@main
     # as MAME's CI (python3, sdl3); dylibbundler and librsvg to package the app
     - run: brew install python3 sdl3 dylibbundler librsvg ccache
-    - uses: actions/cache/restore@v4
+    - uses: actions/cache/restore@v6
       with:
         path: .ccache
         key: ccache-macos-${{ github.sha }}
@@ -114,8 +118,8 @@ jobs:
       env:
         OVERRIDE_CC: ccache clang
         OVERRIDE_CXX: ccache clang++
-      run: make -j3 USE_LIBSDL=1 $MAKEOPTS SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd, -) NEW_GIT_VERSION=$(netplay/version.sh)
-    - uses: actions/cache/save@v4
+      run: make -j3 USE_LIBSDL=1 $MAKEOPTS ARCHOPTS="$ARCH -D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd, -) NEW_GIT_VERSION=$(netplay/version.sh)
+    - uses: actions/cache/save@v6
       if: always()
       with:
         path: .ccache
@@ -147,7 +151,7 @@ jobs:
         dylibbundler -od -b -x $c/MacOS/coinmates -d $c/libs -p @executable_path/../libs/
         codesign --force --deep -s - Coinmates.app
         ditto -c -k --keepParent Coinmates.app coinmates-macos.zip
-    - uses: actions/upload-artifact@v4
+    - uses: actions/upload-artifact@main
       with:
         name: macos
         path: coinmates-macos.zip
@@ -159,10 +163,10 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@main
       with:
         path: src
-    - uses: actions/download-artifact@v4
+    - uses: actions/download-artifact@v8
       with:
         merge-multiple: true
     - name: Steam artwork
