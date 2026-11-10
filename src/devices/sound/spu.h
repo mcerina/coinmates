@@ -65,13 +65,13 @@ protected:
 	std::array<unsigned int, 4> m_decoded_data_remaining;
 	unsigned int m_decoded_data_mask;
 	unsigned int m_decoded_data_size;
-	std::array<uint16_t, 32> m_fifo;
+	std::array<uint16_t, 32> m_fifo{};
 	uint8_t m_fifo_ptr;
 	std::array<uint16_t, 8> m_packet;
-	unsigned int m_voice_active;
+	unsigned int m_voice_active = 0;
 
 	reverb* rev;
-	unsigned int taddr;
+	unsigned int taddr = 0;
 
 	spu_stream_buffer *xa_buffer;
 	spu_stream_buffer *cdda_buffer;
@@ -131,7 +131,7 @@ protected:
 
 	union
 	{
-		unsigned char reg[0x400];
+		unsigned char reg[0x400] = { };
 		struct
 		{
 			voicereg voice[24]; // 0x1f801c00-0x1f801d7e

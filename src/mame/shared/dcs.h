@@ -164,10 +164,10 @@ protected:
 	uint32_t      m_timers_fired;
 
 	std::unique_ptr<uint16_t[]> m_sram;
-	uint16_t m_polling_value;
-	uint32_t m_polling32_value;
+	uint16_t m_polling_value = 0;
+	uint32_t m_polling32_value = 0;
 
-	int32_t m_dmovlay_val;
+	int32_t m_dmovlay_val = 0;
 
 	sdrc_state m_sdrc;
 	dsio_state m_dsio;

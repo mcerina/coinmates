@@ -197,7 +197,7 @@ protected:
 	// CPU registers
 	uint32_t m_pc;
 	uint32_t m_r[ 32 ];
-	uint32_t m_cp0r[ 16 ];
+	uint32_t m_cp0r[ 16 ] = { };
 	uint32_t m_hi;
 	uint32_t m_lo;
 
@@ -219,7 +219,7 @@ protected:
 	uint32_t m_biu;
 	uint32_t m_icacheTag[ ICACHE_ENTRIES / 4 ];
 	uint32_t m_icache[ ICACHE_ENTRIES ];
-	uint32_t m_dcache[ DCACHE_ENTRIES ];
+	uint32_t m_dcache[ DCACHE_ENTRIES ] = { };
 	int m_multiplier_operation;
 	uint32_t m_multiplier_operand1;
 	uint32_t m_multiplier_operand2;

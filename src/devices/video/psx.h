@@ -261,7 +261,7 @@ private:
 	bool m_draw_stp;
 	bool m_check_stp;
 
-	PACKET m_packet;
+	PACKET m_packet = { };
 
 	uint16_t *p_p_vram[ 1024 ];
 

@@ -86,7 +86,7 @@ private:
 	};
 
 	uint16_t m_pc;          //program counter
-	uint16_t m_stack[16];   //LIFO
+	uint16_t m_stack[16] = { };   //LIFO
 	uint16_t m_rp;          //ROM pointer
 	uint16_t m_dp;          //data pointer
 	uint8_t  m_sp;          //stack pointer

@@ -127,23 +127,23 @@ private:
 	// macc_read and macc_write are used by non-pipelined instructions
 	s64 macc, macc_read, macc_write;
 
-	u32 cmem[256];
-	u32 dmem0[256];
-	u32 dmem1[32];
+	u32 cmem[256] = { };
+	u32 dmem0[256] = { };
+	u32 dmem1[32] = { };
 
-	u32 si[4], so[4];
+	u32 si[4] = { }, so[4] = { };
 
 	u32 st0, st1, sti;
-	u32 aacc, xoa, xba, xwr, xrd, txrd, creg;
+	u32 aacc = 0, xoa = 0, xba = 0, xwr = 0, xrd = 0, txrd, creg = 0;
 
-	u8 pc, hpc, ca, id, ba0, ba1, rptc, rptc_next, sa;
+	u8 pc = 0, hpc = 0, ca = 0, id = 0, ba0 = 0, ba1 = 0, rptc = 0, rptc_next = 0, sa = 0;
 
-	u32 xm_adr;
+	u32 xm_adr = 0;
 
-	u8 host[4], hidx, allow_update;
+	u8 host[4] = { }, hidx = 0, allow_update = 0;
 
-	u32 update[16];
-	u8 update_counter_head, update_counter_tail;
+	u32 update[16] = { };
+	u8 update_counter_head = 0, update_counter_tail = 0;
 
 	cd cache;
 

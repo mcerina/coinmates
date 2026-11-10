@@ -27,8 +27,8 @@ public:
 	{
 	}
 
-	PAIR m_cp2cr[ 32 ];
-	PAIR m_cp2dr[ 32 ];
+	PAIR m_cp2cr[ 32 ] = { };
+	PAIR m_cp2dr[ 32 ] = { };
 
 	uint32_t getcp2dr( uint32_t pc, int reg );
 	void setcp2dr( uint32_t pc, int reg, uint32_t value );

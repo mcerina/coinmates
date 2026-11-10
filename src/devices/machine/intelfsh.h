@@ -70,9 +70,9 @@ protected:
 	uint16_t                 m_byte_count;
 	bool                     m_sdp;
 
-	uint8_t                  m_write_buffer[32];
-	uint32_t                 m_write_buffer_start_address;
-	uint32_t                 m_write_buffer_count;
+	uint8_t                  m_write_buffer[32] = { };
+	uint32_t                 m_write_buffer_start_address = 0;
+	uint32_t                 m_write_buffer_count = 0;
 	uint32_t                 m_page_address;
 	std::unique_ptr<uint8_t[]> m_page_buffer;
 

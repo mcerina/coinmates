@@ -87,41 +87,41 @@ protected:
 	devcb_write_line m_rts_handler;
 	devcb_write_line m_cka_handler;
 
-	uint8_t   m_asci_cntla;                  // ASCI control register A
-	uint8_t   m_asci_cntlb;                  // ASCI control register B
-	uint8_t   m_asci_stat;                   // ASCI status register
-	uint8_t   m_asci_tdr;                    // ASCI transmit data register
-	uint8_t   m_asci_rdr;                    // ASCI receive data register
-	uint8_t   m_asci_ext;                    // ASCI extension control register
-	PAIR16    m_asci_tc;                     // ASCI time constant
+	uint8_t   m_asci_cntla = 0;              // ASCI control register A
+	uint8_t   m_asci_cntlb = 0;              // ASCI control register B
+	uint8_t   m_asci_stat = 0;               // ASCI status register
+	uint8_t   m_asci_tdr = 0;                // ASCI transmit data register
+	uint8_t   m_asci_rdr = 0;                // ASCI receive data register
+	uint8_t   m_asci_ext = 0;                // ASCI extension control register
+	PAIR16    m_asci_tc = { };               // ASCI time constant
 
-	uint16_t  m_tsr;
-	uint16_t  m_rsr;
-	uint8_t   m_data_fifo[4];
-	uint8_t   m_error_fifo[4];
-	uint8_t   m_fifo_wr;
-	uint8_t   m_fifo_rd;
+	uint16_t  m_tsr = 0;
+	uint16_t  m_rsr = 0;
+	uint8_t   m_data_fifo[4] = { };
+	uint8_t   m_error_fifo[4] = { };
+	uint8_t   m_fifo_wr = 0;
+	uint8_t   m_fifo_rd = 0;
 
-	uint8_t   m_cts;
-	uint8_t   m_dcd;
-	uint8_t   m_irq;
-	uint8_t   m_txa;
-	uint8_t   m_rxa;
-	uint8_t   m_rts;
+	uint8_t   m_cts = 0;
+	uint8_t   m_dcd = 0;
+	uint8_t   m_irq = 0;
+	uint8_t   m_txa = 0;
+	uint8_t   m_rxa = 0;
+	uint8_t   m_rts = 0;
 
-	uint32_t  m_divisor;
+	uint32_t  m_divisor = 0;
 
-	uint8_t   m_clock_state;
-	uint8_t   m_tx_state;
-	uint8_t   m_rx_state;
-	uint8_t   m_rx_bits;
+	uint8_t   m_clock_state = 0;
+	uint8_t   m_tx_state = 0;
+	uint8_t   m_rx_state = 0;
+	uint8_t   m_rx_bits = 0;
 
-	uint8_t   m_tx_counter;
-	uint8_t   m_rx_counter;
-	uint8_t   m_rx_count_to;
-	uint8_t   m_rx_total_bits;
+	uint8_t   m_tx_counter = 0;
+	uint8_t   m_rx_counter = 0;
+	uint8_t   m_rx_count_to = 0;
+	uint8_t   m_rx_total_bits = 0;
 
-	bool m_rx_enabled;
+	bool m_rx_enabled = false;
 
 	const int  m_id;
 	const bool m_ext;

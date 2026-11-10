@@ -43,7 +43,7 @@ protected:
 	virtual void device_start() override ATTR_COLD;
 
 private:
-	uint8_t m_memcard_data[0x800];
+	uint8_t m_memcard_data[0x800] = { }; // without a card, the same state on every run
 	uint8_t m_lock1;
 	uint8_t m_unlock2;
 	uint8_t m_regsel;

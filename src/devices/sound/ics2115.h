@@ -151,7 +151,7 @@ private:
 	u8 m_irq_enabled, m_irq_pending;
 	bool m_irq_on;
 
-	u16 m_regs[0x40]; // global registers
+	u16 m_regs[0x40] = { }; // global registers
 };
 
 

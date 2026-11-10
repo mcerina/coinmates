@@ -42,14 +42,14 @@ protected:
 private:
 	struct psx_dma_channel
 	{
-		uint32_t n_base;
-		uint32_t n_blockcontrol;
-		uint32_t n_channelcontrol;
+		uint32_t n_base = 0;
+		uint32_t n_blockcontrol = 0;
+		uint32_t n_channelcontrol = 0;
 		emu_timer *timer;
 		read_delegate fn_read;
 		write_delegate fn_write;
-		uint32_t n_ticks;
-		uint32_t b_running;
+		uint32_t n_ticks = 0;
+		uint32_t b_running = 0;
 	};
 
 	void dma_start_timer( int n_channel, uint32_t n_ticks );

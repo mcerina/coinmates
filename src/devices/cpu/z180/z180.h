@@ -223,7 +223,7 @@ private:
 	memory_access<20, 0, 0, ENDIANNESS_LITTLE>::specific m_program;
 	memory_access<16, 0, 0, ENDIANNESS_LITTLE>::specific m_io;
 	uint8_t   m_rtemp;
-	uint32_t  m_ioltemp;
+	uint32_t  m_ioltemp = 0;
 	int m_icount;
 	int m_extra_cycles;           /* extra cpu cycles */
 	uint8_t *m_cc[6];

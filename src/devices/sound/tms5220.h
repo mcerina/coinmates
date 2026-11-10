@@ -131,7 +131,7 @@ private:
 
 	/* Old VSM interface; R Nabet : These have been added to emulate speech Roms */
 	//bool m_schedule_dummy_read;          /* set after each load address, so that next read operation is preceded by a dummy read */
-	uint8_t m_read_byte_register;       /* a serial->parallel shifter, used by "read byte" command to store 8 bits from the VSM */
+	uint8_t m_read_byte_register = 0;    /* a serial->parallel shifter, used by "read byte" command to store 8 bits from the VSM */
 	bool m_RDB_flag;                   /* whether we should read data register or status register */
 
 	/* these contain data that describes the 128-bit data FIFO */
@@ -195,7 +195,7 @@ private:
 	bool m_inhibit;             /* If 1, interpolation is inhibited until the DIV1 period */
 	bool m_uv_zpar;             /* If 1, zero k5 thru k10 coefficients */
 	bool m_zpar;                /* If 1, zero ALL parameters. */
-	bool m_pitch_zero;          /* circuit 412; pitch is forced to zero under certain circumstances */
+	bool m_pitch_zero = false;          /* circuit 412; pitch is forced to zero under certain circumstances */
 	uint8_t m_c_variant_rate;   /* only relevant for tms5220C's multi frame rate feature; is the actual 4 bit value written on a 0x2* or 0x0* command */
 	uint16_t m_pitch_count;     /* pitch counter; provides chirp rom address */
 
@@ -203,7 +203,7 @@ private:
 	int32_t m_x[10];
 
 	uint16_t m_RNG;             /* the random noise generator configuration is: 1 + x + x^3 + x^4 + x^13 TODO: no it isn't */
-	int16_t m_excitation_data;
+	int16_t m_excitation_data = 0;
 
 	/* The TMS52xx has two different ways of providing output data: the
 	   analog speaker pin (which was usually used) and the Digital I/O pin.
@@ -224,7 +224,7 @@ private:
 
 	/* rsws - state, rs bit 1, ws bit 0 */
 	uint8_t m_rs_ws;
-	uint8_t m_read_latch;
+	uint8_t m_read_latch = 0;
 	uint8_t m_write_latch;
 
 	sound_stream *m_stream;

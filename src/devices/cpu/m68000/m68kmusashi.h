@@ -146,7 +146,7 @@ protected:
 	u32 m_cacr;         /* Cache Control Register (m68020, unemulated) */
 	u32 m_caar;         /* Cache Address Register (m68020, unemulated) */
 	u32 m_ir;           /* Instruction Register */
-	extFloat80_t m_fpr[8]; /* FPU Data Register (m68030/040) */
+	extFloat80_t m_fpr[8] = { }; /* FPU Data Register (m68030/040) */
 	u32 m_fpiar;        /* FPU Instruction Address Register (m68040) */
 	u32 m_fpsr;         /* FPU Status Register (m68040) */
 	u32 m_fpcr;         /* FPU Control Register (m68040) */
@@ -188,7 +188,7 @@ protected:
 		u32 size;
 		u32 data;
 		u32 write;
-	} m_rerun[M68K_RERUN_ENTRIES];
+	} m_rerun[M68K_RERUN_ENTRIES] = { };
 
 	/* Clocks required for instructions / exceptions */
 	u32 m_cyc_bcc_notake_b;
@@ -270,7 +270,7 @@ protected:
 	u32 m_mmu_tt0, m_mmu_tt1;
 	u32 m_mmu_itt0, m_mmu_itt1, m_mmu_dtt0, m_mmu_dtt1;
 	u32 m_mmu_acr0, m_mmu_acr1, m_mmu_acr2, m_mmu_acr3;
-	u32 m_mmu_last_page_entry, m_mmu_last_page_entry_addr;
+	u32 m_mmu_last_page_entry = 0, m_mmu_last_page_entry_addr = 0;
 
 	u16 m_mmu_tmp_sr;      /* temporary hack: status code for ptest and to handle write protection */
 	u16 m_mmu_tmp_fc;      /* temporary hack: function code for the mmu (moves) */

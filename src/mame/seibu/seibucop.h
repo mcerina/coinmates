@@ -122,8 +122,8 @@ public:
 	colinfo cop_collision_info[2];
 
 	uint16_t cop_hit_status, cop_hit_baseadr;
-	int16_t cop_hit_val[3];
-	uint16_t cop_hit_val_stat;
+	int16_t cop_hit_val[3] = { };
+	uint16_t cop_hit_val_stat = 0;
 
 	// Sort DMA (zeroteam, cupsoc)
 

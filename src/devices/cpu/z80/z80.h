@@ -206,7 +206,7 @@ protected:
 	void set_f(u8 f);
 
 	int    m_icount;
-	int    m_tmp_irq_vector;
+	int    m_tmp_irq_vector = 0;
 	PAIR16 m_shared_data;
 	PAIR16 m_shared_data2;
 	PAIR16 m_irtmp;

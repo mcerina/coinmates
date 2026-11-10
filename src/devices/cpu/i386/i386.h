@@ -358,11 +358,11 @@ protected:
 	uint16_t m_x87_cw;
 	uint16_t m_x87_sw;
 	uint16_t m_x87_tw;
-	uint16_t m_x87_ds;
-	uint32_t m_x87_data_ptr;
-	uint16_t m_x87_cs;
-	uint32_t m_x87_inst_ptr;
-	uint16_t m_x87_opcode;
+	uint16_t m_x87_ds = 0;
+	uint32_t m_x87_data_ptr = 0;
+	uint16_t m_x87_cs = 0;
+	uint32_t m_x87_inst_ptr = 0;
+	uint16_t m_x87_opcode = 0;
 
 	i386_modrm_func m_opcode_table_x87_d8[256];
 	i386_modrm_func m_opcode_table_x87_d9[256];

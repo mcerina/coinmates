@@ -12,7 +12,8 @@ device_rom_interface<AddrWidth, DataWidth, AddrShift, Endian>::device_rom_interf
 	m_rom_space(device, finder_base::DUMMY_TAG, -1),
 	m_rom_config("rom", Endian, 8 << DataWidth, AddrWidth, AddrShift),
 	m_bank(device, "bank"),
-	m_cur_bank(-1)
+	m_cur_bank(-1),
+	m_bank_count(0)
 {
 }
 

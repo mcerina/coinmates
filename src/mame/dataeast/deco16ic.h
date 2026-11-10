@@ -159,6 +159,11 @@ private:
 			, m_size(0)
 			, m_colour_bank(0)
 			, m_colour_mask(0xf)
+			, m_scrollx(0)
+			, m_scrolly(0)
+			, m_control0(0)
+			, m_control1(0)
+			, m_bankval(0)
 		{
 		}
 

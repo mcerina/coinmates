@@ -287,8 +287,8 @@ private:
 	uint8_t m_AUDCTL;         /* AUDCTL (W/D208) */
 	uint8_t m_ALLPOT;         /* ALLPOT (R/D208) */
 	uint8_t m_KBCODE;         /* KBCODE (R/D209) */
-	uint8_t m_SERIN;          /* SERIN  (R/D20D) */
-	uint8_t m_SEROUT;         /* SEROUT (W/D20D) */
+	uint8_t m_SERIN = 0;       /* SERIN  (R/D20D) */
+	uint8_t m_SEROUT = 0;      /* SEROUT (W/D20D) */
 	uint8_t m_IRQST;          /* IRQST  (R/D20E) */
 	uint8_t m_IRQEN;          /* IRQEN  (W/D20E) */
 	uint8_t m_SKSTAT;         /* SKSTAT (R/D20F) */
@@ -296,7 +296,7 @@ private:
 
 	uint8_t m_pot_counter;
 	uint8_t m_kbd_cnt;
-	uint8_t m_kbd_latch;
+	uint8_t m_kbd_latch = 0;
 	uint8_t m_kbd_state;
 
 	uint16_t m_serin_shift;

@@ -55,9 +55,9 @@ private:
 	uint32_t n_offset;
 	uint16_t p_n_output[ 24 * 16 ];
 
-	int32_t p_n_quantize_y[ DCTSIZE2 ];
-	int32_t p_n_quantize_uv[ DCTSIZE2 ];
-	int32_t p_n_cos[ DCTSIZE2 ];
+	int32_t p_n_quantize_y[ DCTSIZE2 ] = { };
+	int32_t p_n_quantize_uv[ DCTSIZE2 ] = { };
+	int32_t p_n_cos[ DCTSIZE2 ] = { };
 	int32_t p_n_cos_precalc[ DCTSIZE2 * DCTSIZE2 ];
 
 	uint32_t n_0_command;

@@ -22,7 +22,7 @@ public:
 	uint16_t protection_r(offs_t offset);
 	void protection_w(offs_t offset, uint16_t data, uint16_t mem_mask = ~0);
 
-	uint16_t m_cart_ram[0x1000];
+	uint16_t m_cart_ram[0x1000] = { };
 
 	void mslug5_decrypt_68k(uint8_t* rom, uint32_t size);
 	void svc_px_decrypt(uint8_t* rom, uint32_t size);

@@ -60,8 +60,8 @@ void ds2404_device::device_start()
 
 	time_t ref_time = mktime(&ref_tm);
 
-	time_t current_time;
-	time(&current_time);
+	// the machine's time, as the other clocks: -rtc and input playback set it
+	time_t current_time = machine().base_time();
 	current_time -= ref_time;
 
 	m_rtc[0] = 0x0;
