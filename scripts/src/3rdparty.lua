@@ -1908,6 +1908,49 @@ project "ymfm"
 
 
 --------------------------------------------------
+-- CORE-MATH library objects
+--------------------------------------------------
+
+project "coremath"
+	uuid "1d7a9f3e-6c2b-4f0e-9a51-3b8e2c7d4f60"
+	kind "StaticLib"
+
+	files {
+		MAME_DIR .. "3rdparty/core-math/src/binary32/acos/acosf.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary32/atan2/atan2f.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary32/cos/cosf.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary32/exp/expf.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary32/log/logf.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary32/log10/log10f.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary32/pow/powf.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary32/sin/sinf.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary32/tan/tanf.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/acos/acos.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/asin/asin.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/atan/atan.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/atan2/atan2.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/atan2/tint.h",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/cos/cos.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/exp/exp.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/hypot/hypot.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/log/dint.h",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/log/log.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/log10/dint.h",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/log10/log10.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/log1p/log1p.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/log2/log2.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/pow/dint.h",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/pow/pow.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/pow/pow.h",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/pow/qint.h",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/sin/sin.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/sinh/sinh.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/tan/tan.c",
+		MAME_DIR .. "3rdparty/core-math/src/binary64/tanh/tanh.c",
+	}
+
+
+--------------------------------------------------
 -- reSIDfp library objects
 --------------------------------------------------
 

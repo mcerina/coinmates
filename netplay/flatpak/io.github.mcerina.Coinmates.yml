@@ -30,7 +30,6 @@ modules:
       # as Flathub's MAME: CFLAGS, OSD, USE_SYSTEM_LIB_FLAC, LDOPTS. Ours:
       # - SUBTARGET, SOURCES: only the drivers of the co-op games (a build of minutes, not hours)
       # - USE_QTDEBUG=0: no debugger, which would stop the game for one player only
-      # - ARCHOPTS=-ffp-contract=off: the same floating point on every system, or the players' states differ
       # - ARCHOPTS=-fsanitize=bounds, trapping: an array index out of bounds stops the game instead of
       #   writing in memory. A joiner loads the host's state, and drivers use its values as indices.
       #   The SDK's CFLAGS already add the rest (FORTIFY, _GLIBCXX_ASSERTIONS, stack protector, CET).
@@ -39,10 +38,11 @@ modules:
       # - no TOOLS, no SDL_INI_PATH: we ship only the emulator, and the launcher passes the options
       - make -j$FLATPAK_BUILDER_N_JOBS CFLAGS+=-Wno-error=restrict OSD=sdl3 USE_SYSTEM_LIB_FLAC=1 LDOPTS=-Wl,-s
         SUBTARGET=coinmates SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,)
-        USE_QTDEBUG=0 ARCHOPTS="-ffp-contract=off -fsanitize=bounds -fsanitize-undefined-trap-on-error" NEW_GIT_VERSION=$(netplay/version.sh)
+        USE_QTDEBUG=0 ARCHOPTS="-fsanitize=bounds -fsanitize-undefined-trap-on-error" NEW_GIT_VERSION=$(netplay/version.sh)
       - install -Dm755 coinmates /app/bin/coinmates
       - install -Dm755 netplay/flatpak/launch /app/bin/launch
       - install -Dm644 netplay/flatpak/default.cfg /app/share/coinmates/default.cfg
+      - install -Dm644 3rdparty/core-math/LICENSE /app/share/licenses/io.github.mcerina.Coinmates/CORE-MATH-LICENSE
       # the entry in the menus, and in Steam's "Add a Non-Steam Game"
       - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.desktop /app/share/applications/io.github.mcerina.Coinmates.desktop
       # what Discover and Flathub show

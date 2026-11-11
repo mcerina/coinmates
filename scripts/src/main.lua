@@ -163,6 +163,7 @@ end
 		"softfloat3",
 		"wdlfft",
 		"ymfm",
+		"coremath",
 		"residfp",
 		ext_lib("jpeg"),
 		"7z",
@@ -286,6 +287,8 @@ if (STANDALONE~=true) then
 	files {
 		mainfile,
 		GEN_DIR .. "version.cpp",
+		-- an object of the executable, not of a library, so that it comes before the C library
+		MAME_DIR .. "src/lib/util/libm.c",
 		GEN_DIR .. _target .. "/" .. _subtarget .. "/drivlist.cpp",
 	}
 

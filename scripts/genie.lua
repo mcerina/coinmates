@@ -862,6 +862,16 @@ configuration { "mingw-clang" }
 	}
 configuration {  }
 
+-- the same floating point on every system, or netplay players' states differ:
+-- - no fused multiply-add, which compilers for ARM use by default
+-- - the elementary functions of src/lib/util/libm.c: the compiler must not compute them by itself
+--   (clang does with the host's C library) nor turn them into others (sin and cos into sincos);
+--   -fmath-errno, as gcc does, keeps clang from making the float ones of <cmath> its own instructions
+buildoptions { "-ffp-contract=off", "-fmath-errno" }
+for _, f in ipairs({ "acos", "asin", "atan", "atan2", "cos", "exp", "hypot", "log", "log10", "log1p", "log2", "pow", "sin", "sinh", "tan", "tanh" }) do
+	buildoptions { "-fno-builtin-" .. f, "-fno-builtin-" .. f .. "f" }
+end
+
 if _OPTIONS["ARCHOPTS"] then
 	buildoptions {
 		_OPTIONS["ARCHOPTS"]

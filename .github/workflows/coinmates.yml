@@ -17,8 +17,6 @@ permissions:
 # What we add to MAME's options, everywhere (as in the flatpak manifest):
 # - SUBTARGET, SOURCES: only the drivers of the co-op games
 # - USE_QTDEBUG=0: no debugger, which would stop the game for one player only
-# - ARCHOPTS=-ffp-contract=off: no fused multiply-add, which compilers for ARM use by default: the
-#   same floating point on every system, or the players' states differ
 # - ARCHOPTS=-fsanitize=bounds, trapping: an array index out of bounds stops the game instead of
 #   writing in memory (a joiner loads the host's state, and drivers use its values as indices); on
 #   Windows and macOS also the checks of the C++ library, and on Windows the stack protector and
@@ -26,7 +24,7 @@ permissions:
 # - NEW_GIT_VERSION: the Coinmates version, which all the players in a room must share
 env:
   MAKEOPTS: SUBTARGET=coinmates USE_QTDEBUG=0
-  ARCH: -ffp-contract=off -fsanitize=bounds -fsanitize-undefined-trap-on-error
+  ARCH: -fsanitize=bounds -fsanitize-undefined-trap-on-error
   # Not in MAME's CI: ccache, kept between runs (also failed ones), so that a try after a small
   # change takes minutes, not an hour. The sloppiness lets it cache with precompiled headers.
   CCACHE_DIR: ${{ github.workspace }}/.ccache
@@ -95,6 +93,7 @@ jobs:
         d=Coinmates
         mkdir -p $d/cfg
         cp coinmates.exe netplay/windows/coinmates.ini netplay/games.txt COPYING $d/
+        cp 3rdparty/core-math/LICENSE $d/CORE-MATH-LICENSE
         cp netplay/flatpak/default.cfg $d/cfg/
         printf 'last_used_filter Available\n' > $d/ui.ini
         ldd coinmates.exe | awk '$3 ~ /ucrt64/ { print $3 }' | xargs -r cp -t $d/
@@ -160,7 +159,8 @@ jobs:
         cp netplay/macos/Info.plist $c/
         plutil -replace CFBundleShortVersionString -string "$(netplay/version.sh)" $c/Info.plist
         plutil -replace CFBundleVersion -string "$(netplay/version.sh)" $c/Info.plist
-        cp netplay/flatpak/default.cfg netplay/games.txt $c/Resources/
+        cp netplay/flatpak/default.cfg netplay/games.txt COPYING $c/Resources/
+        cp 3rdparty/core-math/LICENSE $c/Resources/CORE-MATH-LICENSE
         icon() { rsvg-convert -w $1 -h $1 netplay/flatpak/io.github.mcerina.Coinmates.svg -o $2; }
         for s in 16 32 128 256 512; do
           icon $s icon.iconset/icon_${s}x${s}.png

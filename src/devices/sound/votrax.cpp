@@ -25,8 +25,6 @@ tp1 = phi clock (tied to f2q rom access)
 #include "emu.h"
 #include "votrax.h"
 
-#include "detmath.h"
-
 #include <numbers>
 
 #define LOG_PHONE  (1U << 1)
@@ -896,7 +894,7 @@ void votrax_sc01_device::build_standard_filter(double *a, double *b,
 	double fpeak = sqrt(fabs(k0*k1 - k2))/(2*PI*k2);
 
 	// Turn that into a warp multiplier
-	double zc = 2*PI*fpeak/util::detmath::tan(PI*fpeak / m_sclock); // the same bits on every system, for netplay
+	double zc = 2*PI*fpeak/tan(PI*fpeak / m_sclock);
 
 	// Finally compute the result of the z-transform
 	double m0 = zc*k0;
@@ -947,7 +945,7 @@ void votrax_sc01_device::build_lowpass_filter(double *a, double *b,
 	double fpeak = 1/(2*PI*k);
 
 	// Turn that into a warp multiplier
-	double zc = 2*PI*fpeak/util::detmath::tan(PI*fpeak / m_sclock); // the same bits on every system, for netplay
+	double zc = 2*PI*fpeak/tan(PI*fpeak / m_sclock);
 
 	// Finally compute the result of the z-transform
 	double m = zc*k;
@@ -1004,7 +1002,7 @@ void votrax_sc01_device::build_noise_shaper_filter(double *a, double *b,
 	double fpeak = sqrt(1/k2)/(2*PI);
 
 	// Turn that into a warp multiplier
-	double zc = 2*PI*fpeak/util::detmath::tan(PI*fpeak / m_sclock); // the same bits on every system, for netplay
+	double zc = 2*PI*fpeak/tan(PI*fpeak / m_sclock);
 
 	// Finally compute the result of the z-transform
 	double m0 = zc*k0;

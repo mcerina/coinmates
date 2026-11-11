@@ -192,4 +192,4 @@ How it works: [src/emu/rollback.cpp](src/emu/rollback.cpp) (saving, predicting a
 
 ## License
 
-Coinmates is a fork of MAME and keeps its license: the GNU General Public License, version 2 or later; see [COPYING](COPYING). MAME is a registered trademark of Gregory Ember; Coinmates is not affiliated with the MAME team. MAME's own README is at [github.com/mamedev/mame](https://github.com/mamedev/mame#readme).
+Coinmates is a fork of MAME and keeps its license: the GNU General Public License, version 2 or later; see [COPYING](COPYING). The math functions come from [CORE-MATH](https://core-math.gitlabpages.inria.fr/), under the MIT license: see [3rdparty/core-math/LICENSE](3rdparty/core-math/LICENSE). MAME is a registered trademark of Gregory Ember; Coinmates is not affiliated with the MAME team. MAME's own README is at [github.com/mamedev/mame](https://github.com/mamedev/mame#readme).
