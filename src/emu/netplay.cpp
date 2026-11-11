@@ -574,6 +574,7 @@ private:
 	u32 m_lobby_start_ms = 0;
 	u32 m_last_hello_ms = 0;
 	u32 m_last_draw_ms = 0;
+	u32 m_inputs_ms = 0;
 
 	std::string m_room;
 	util::sha1_t m_key;
@@ -1285,7 +1286,10 @@ void netplay_session::stall_tick()
 	osd_sleep(osd_ticks_per_second() / 1000);
 	poll();
 	send_chunk_ack();
-	send_inputs();
+	// as often as playing: this loop turns every millisecond, and sending at that pace filled a phone's
+	// upload, whose queue then held the inputs for seconds
+	if (now_ms() - m_inputs_ms >= u32(m_frame_ms))
+		send_inputs();
 	tick_transfers();
 	flush_simulated();
 	check_timeouts();
@@ -2318,6 +2322,7 @@ void netplay_session::send_inputs()
 		send_roster();
 	const s64 newest = m_known[m_me];
 	const u32 now = now_ms();
+	m_inputs_ms = now;
 	for (int p = 0; p < m_players; p++)
 	{
 		peer &pr = m_peers[p];
