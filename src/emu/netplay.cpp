@@ -27,8 +27,9 @@
       cut=<frame>:<ms>  lose every packet for that long from that frame on, once
       fault=<frame>     corrupt one byte of RAM at this frame
       dump=<from>:<to>  write <path>.<frame>.state for these confirmed frames
-      draw=1            draw while resimulating: state computed while drawing then stops differing
+      draw=1            draw the redone frames too: if a desync goes away, the game's drawing changes its state
       audio=<ms>        the sound's delay, instead of AUDIO_DELAY_MS
+      port=<n>          a joiner's port instead of LAN_PORT: a new one for each test, unknown to routers
 
 ***************************************************************************/
 
@@ -669,8 +670,6 @@ private:
 	int m_sim_delay = 0, m_sim_jitter = 0, m_sim_loss = 0;
 	s64 m_cut_frame = -1;
 	u32 m_cut_ms = 0, m_cut_until = 0;
-	bool m_cut_in = true;           // cut: no packets either way; mute: none sent
-	int m_deaf = -1;                // in the game, the packets of this player are lost
 	u32 m_audio_delay_ms = AUDIO_DELAY_MS;
 	u16 m_test_port = 0;            // instead of LAN_PORT: the same after a restart, as at home
 	static inline bool s_cut_done = false;
@@ -722,8 +721,7 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 			else if (k == "log") m_log_path = v;
 			else if (k == "dump") std::sscanf(v.c_str(), "%lld:%lld", &m_test_dump_from, &m_test_dump_to);
 			else if (k == "sim") std::sscanf(v.c_str(), "%d:%d:%d", &m_sim_delay, &m_sim_jitter, &m_sim_loss);
-			else if ((k == "cut" || k == "mute") && !s_cut_done) { long long f; unsigned ms; if (std::sscanf(v.c_str(), "%lld:%u", &f, &ms) == 2) { m_cut_frame = f; m_cut_ms = ms; m_cut_in = k == "cut"; } }
-			else if (k == "deaf" && !m_rejoining) m_deaf = std::stoi(v) - 1;
+			else if (k == "cut" && !s_cut_done) { long long f; unsigned ms; if (std::sscanf(v.c_str(), "%lld:%u", &f, &ms) == 2) { m_cut_frame = f; m_cut_ms = ms; } }
 			else if (k == "port") m_test_port = u16(std::stoi(v));
 			else if (k == "audio") m_audio_delay_ms = u32(std::stoul(v));
 		}
@@ -1363,7 +1361,7 @@ void netplay_session::run_frame()
 	{
 		s_cut_done = true;
 		m_cut_until = now_ms() + m_cut_ms;
-		osd_printf_info("Netplay test: no packets %sfor %u ms\n", m_cut_in ? "" : "sent ", m_cut_ms);
+		osd_printf_info("Netplay test: no packets for %u ms\n", m_cut_ms);
 	}
 
 	poll();
@@ -1778,7 +1776,7 @@ void netplay_session::poll()
 			continue;
 		}
 		m_rx_bytes += size;
-		if (m_cut_in && m_cut_until && s32(m_cut_until - now_ms()) > 0)
+		if (m_cut_until && s32(m_cut_until - now_ms()) > 0)
 			continue;
 		if (!m_meet || !m_meet->handle(from, buffer, size))
 			handle_packet(from, buffer, size);
@@ -1846,8 +1844,6 @@ void netplay_session::handle_packet(const udp::endpoint &from, const u8 *data, s
 	}
 
 	if (session != m_session || !m_session || sender >= m_players || sender == m_me || !slot_count())
-		return;
-	if (sender == m_deaf && m_phase == phase::RUNNING)
 		return;
 	if (type == P_MEET)
 	{
