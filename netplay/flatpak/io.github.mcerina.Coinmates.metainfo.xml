@@ -41,15 +41,15 @@
   <screenshots>
     <screenshot type="default">
       <caption>Pick a game among the ones you have</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.0.0/netplay/readme/1-list.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.2.0/netplay/readme/1-list.png</image>
     </screenshot>
     <screenshot>
       <caption>Play alone, host a room, or join one</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.0.0/netplay/readme/2-choices.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.2.0/netplay/readme/2-choices.png</image>
     </screenshot>
     <screenshot>
       <caption>Join with the room code a friend sent you</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.0.0/netplay/readme/3-join.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.2.0/netplay/readme/3-join.png</image>
     </screenshot>
   </screenshots>
 
@@ -83,6 +83,16 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.2.0" date="2026-11-12">
+      <description>
+        <p>The input delay adapts by itself, during the game, to the connection and to each player's computer: the setting to choose it is gone. Every player needs this version: it can't play with 1.1.0.</p>
+        <ul>
+          <li>With friends far away the game no longer slows down: the inputs wait a little more instead</li>
+          <li>A Steam Deck or a slow computer with a heavy game keeps up: the others delay their inputs just enough</li>
+          <li>Macs, Intel and Apple silicon, compute the games exactly as Linux and Windows: the math functions are the same everywhere</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.1.0" date="2026-11-11">
       <description>
         <p>Rooms are found through public BitTorrent trackers instead of the DHT, also on mobile data. Every player needs this version: it can't play with 1.0.0.</p>
