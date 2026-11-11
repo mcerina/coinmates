@@ -196,7 +196,8 @@ const options_entry emu_options::s_option_entries[] =
 	{ OPTION_NETPLAY_DELAY,                              "1",         core_options::option_type::INTEGER,    "frames of input delay (host)" },
 	{ OPTION_NETPLAY_WINDOW,                             "10",        core_options::option_type::INTEGER,    "maximum frames to roll back (host)" },
 	{ OPTION_NETPLAY_HASH_EVERY,                         "30",        core_options::option_type::INTEGER,    "frames between desync checks (host)" },
-	{ OPTION_NETPLAY_DHT,                                "router.bittorrent.com:6881;dht.transmissionbt.com:6881;router.utorrent.com:6881;dht.libtorrent.org:25401", core_options::option_type::STRING, "BitTorrent DHT nodes to start from, to find the room's players and the public address, separated by ; (empty: none)" },
+	{ OPTION_NETPLAY_TRACKERS,                           "tracker.opentrackr.org:1337;open.stealth.si:80;tracker-udp.gbitt.info:80;tracker.qu.ax:6969;tracker.nyaa.vc:6969", core_options::option_type::STRING, "UDP BitTorrent trackers where the room's players find each other, separated by ; (empty: only at home)" },
+	{ OPTION_NETPLAY_STUN,                               "stun.l.google.com:19302;stun.cloudflare.com:3478;stun.nextcloud.com:3478", core_options::option_type::STRING, "STUN servers that tell the public address, separated by ; (empty: the local port is announced)" },
 	{ OPTION_NETPLAY_LOGS,                               "",          core_options::option_type::PATH,       "write the log of every session, with the other players' logs, in this folder (empty: none)" },
 
 	{ nullptr,                                           nullptr,     core_options::option_type::HEADER,     "CORE COMM OPTIONS" },

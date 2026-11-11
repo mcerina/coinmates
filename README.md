@@ -90,7 +90,7 @@ Everybody plays with the host's DIP switches, and from when the room opens they 
 
 ### Joining
 
-Finding the room takes a few seconds, without any server of ours: the players find each other through the BitTorrent network. Then you wait for the host:
+Finding the room takes a few seconds, without any server of ours: the players find each other through public BitTorrent trackers. Then you wait for the host:
 
 ![Joined, waiting for the host](netplay/readme/6-joined.png)
 
@@ -134,7 +134,10 @@ When you join, the host's machine state is loaded on yours, and MAME isn't made 
 
 When a game ends because of a problem, the reason shows up in red in the list of games.
 
-**`room not found`**, after 30 seconds. Check the code and the game, and that the host is still waiting. If the room log of one of you says `your router uses a different port for every destination (symmetric NAT)`, your routers can't connect directly, as with some mobile operators: use [Tailscale](#tailscale), or let the other player host.
+**Room not found after 30 seconds**: the message says where it stopped.
+- `cannot reach the trackers, where rooms are found`: check the internet connection.
+- `room not found: nobody is announcing this code`: check the code and the game, and that the host is still waiting.
+- `found the room, but the host does not answer`: a router or firewall is in the way. If the room log of one of you says `your router uses a different port for every destination (symmetric NAT)`, your routers can't connect directly, as with some mobile operators: use [Tailscale](#tailscale), or let the other player host.
 
 **`refused by the host: …`** says why:
 - `different Coinmates version`: everybody updates to the latest release.
