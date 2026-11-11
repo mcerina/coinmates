@@ -83,6 +83,17 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.1.0" date="2026-11-11">
+      <description>
+        <p>Rooms are found through public BitTorrent trackers instead of the DHT, also on mobile data. Every player needs this version: it can't play with 1.0.0.</p>
+        <ul>
+          <li>Joining takes a few seconds, between homes and phones too</li>
+          <li>Rooms of 3 and 4 players get everyone connected to each other</li>
+          <li>A build for Intel Macs</li>
+          <li>Hardened Windows builds</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.0.0" date="2026-11-10">
       <description>
         <p>The first release, for Linux, Windows and Mac.</p>
