@@ -60,6 +60,8 @@ public:
 	bool throttled() const { return m_throttled; }
 	float throttle_rate() const { return m_throttle_rate; }
 	bool fastforward() const { return m_fastforward; }
+	// waiting for real time to catch up, in all: what a frame leaves to spare (rollback netplay)
+	osd_ticks_t idle_ticks() const { return m_idle_ticks; }
 
 	// setters
 	void set_frameskip(int frameskip);
@@ -164,6 +166,7 @@ private:
 	bool                m_resimulating = false;     // rollback resimulation: no draw, UI, OSD, throttle
 	bool                m_resim_saved_skip = false;
 	osd_ticks_t         m_average_oversleep;        // average number of ticks the OSD oversleeps
+	osd_ticks_t         m_idle_ticks = 0;
 
 	// snapshot stuff
 	render_target *     m_snap_target;              // screen shapshot target

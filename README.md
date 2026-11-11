@@ -1,6 +1,6 @@
 # Coinmates
 
-Co-op arcade games with your friends, online. Coinmates is based on [MAME](https://www.mamedev.org/) and lets 2 to 4 players beat up, shoot and race through the arcade co-op classics over the internet, without the input lag of classic netplay. It uses rollback, like modern fighting games: your inputs act at once, and when a friend's input arrives late, the last few frames are quietly redone.
+Co-op arcade games with your friends, online. Coinmates is based on [MAME](https://www.mamedev.org/) and lets 2 to 4 players beat up, shoot and race through the arcade co-op classics over the internet, without the input lag of classic netplay. It uses rollback, like modern fighting games: your inputs act at once, and when a friend's input arrives late, the last few frames are quietly redone. With friends far away, or a computer that can't redo many frames, the inputs wait a little, by themselves: just enough for the game not to slow down.
 
 - **Linux, Steam Deck, Windows and Mac**, all the same, and playing together.
 - **No accounts, no servers to run**: the host gets a 6-character room code, and the others type it in.
@@ -67,7 +67,6 @@ Choose the game with A (or Enter), then:
 - **Play Alone**: the game, just you.
 - **Host Online**: you host. A room code appears: send it to your friends, in your usual chat.
 - **Join Online, Room Code**: type the code a friend sent you, then A or Enter (on the Steam Deck's keyboard, R2). Upper or lower case, with or without the dash: it doesn't matter.
-- **Input Delay When Hosting**: how many frames the inputs wait, for everybody, when you host; left and right change it. Leave it on the one marked *(default)*, chosen for each game, unless the game stutters: one frame more makes a game with a high ping smoother, but the controls a little slower.
 - **Report a Problem**: see [below](#report-a-problem).
 
 Games for one player only, or with analog controls (wheels, dials, trackballs), have just *Play Alone*.
@@ -134,7 +133,7 @@ When you join, the host's machine state is loaded on yours, and MAME isn't made 
 
 When a game ends because of a problem, the reason shows up in red in the list of games.
 
-**Room not found after 30 seconds**: the message says where it stopped.
+**Room not found after 25 seconds**: the message says where it stopped.
 - `cannot reach the trackers, where rooms are found`: check the internet connection.
 - `room not found: nobody is announcing this code`: check the code and the game, and that the host is still waiting.
 - `found the room, but the host does not answer`: a router or firewall is in the way. If the room log of one of you says `your router uses a different port for every destination (symmetric NAT)`, your routers can't connect directly, as with some mobile operators: use [Tailscale](#tailscale), or let the other player host.
@@ -144,11 +143,11 @@ When a game ends because of a problem, the reason shows up in red in the list of
 - `different game`: the message says which game the host is playing.
 - `different ROM contents`: your ROMs for that game differ, see [ROMs](#roms).
 - `the game has already started, with every place taken`: wait for a place to be free, or for the next game.
-- `cannot connect to the other players`: you reached the host, but not one of the other players, for 15 seconds. Use Tailscale between the two of you.
+- `cannot connect to the other players`: you reached the host, but not one of the other players, for about 7 seconds. Use Tailscale between the two of you.
 
 **`lost the connection, and could not join again`**: the room is gone (the host left), or the connection is still down.
 
-**The game stutters.** With a high ping, redoing the late frames sometimes doesn't fit in one frame. The host can delay the inputs more, for everybody: one frame more under *Input Delay When Hosting*, then host again.
+**The controls react a little late**: with a friend far away, or a computer that can't keep up, the inputs wait a few frames on purpose, so that the game doesn't slow down. The room log says how many, at the end of the game (`frames of input delay`).
 
 **`Repairing a desync`**: the players drifted apart. It repairs itself with a small jump; if it happens often, report it.
 

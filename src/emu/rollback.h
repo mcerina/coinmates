@@ -41,10 +41,6 @@ public:
 	// why the last session ended, for the system list to show once; empty if it wasn't told
 	static std::string take_end_message() { return std::exchange(s_end_message, std::string()); }
 
-	// frames of input delay of a system, unless the host chooses: more for the heaviest
-	static int default_delay(const game_driver &system);
-	static constexpr int MIN_DELAY = 1, MAX_DELAY = 4;   // what the host can choose in the menu
-
 	// what was typed to join, as -netplay_join takes it: a room code, or host:port; empty if neither
 	static std::string join_target(std::string_view typed);
 

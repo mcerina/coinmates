@@ -193,8 +193,6 @@ const options_entry emu_options::s_option_entries[] =
 	{ OPTION_NETPLAY_HOST,                               "0",         core_options::option_type::INTEGER,    "host a rollback netplay session on this UDP port" },
 	{ OPTION_NETPLAY_JOIN,                               "",          core_options::option_type::STRING,     "join a rollback netplay session: its room code, or host:port" },
 	{ OPTION_NETPLAY_PLAYERS,                            "0",         core_options::option_type::INTEGER,    "start by itself when this many players have joined (host; 0: as many as the system has); Start starts earlier" },
-	{ OPTION_NETPLAY_DELAY,                              "1",         core_options::option_type::INTEGER,    "frames of input delay (host)" },
-	{ OPTION_NETPLAY_WINDOW,                             "10",        core_options::option_type::INTEGER,    "maximum frames to roll back (host)" },
 	{ OPTION_NETPLAY_HASH_EVERY,                         "30",        core_options::option_type::INTEGER,    "frames between desync checks (host)" },
 	{ OPTION_NETPLAY_TRACKERS,                           "tracker.opentrackr.org:1337;open.stealth.si:80;tracker-udp.gbitt.info:80;tracker.qu.ax:6969;tracker.nyaa.vc:6969", core_options::option_type::STRING, "UDP BitTorrent trackers where the room's players find each other, separated by ; (empty: only at home)" },
 	{ OPTION_NETPLAY_STUN,                               "stun.l.google.com:19302;stun.cloudflare.com:3478;stun.nextcloud.com:3478", core_options::option_type::STRING, "STUN servers that tell the public address, separated by ; (empty: the local port is announced)" },

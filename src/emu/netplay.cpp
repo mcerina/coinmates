@@ -93,6 +93,11 @@ constexpr s64 BACK_FRAMES = 180;        // a choice: 3 s for a late joiner to ca
 constexpr size_t TAG_SIZE = 8;
 constexpr u32 AUDIO_DELAY_MS = 60;      // 3 frames of the 20 ms sound updates: rollbacks within it aren't heard; ~125 ms isn't noticed
 constexpr u32 FAR_RTT_MS = netplay_meet::FAR_RTT_MS;
+constexpr int WINDOW = 10;              // a choice: the most frames predicted, and redone; as many states kept
+constexpr int MIN_DELAY = 1;            // a frame's own inputs are all read only after its ports are set
+// a choice: samples of each estimate of the load and of the worst RTT; the load's 90th percentile, so
+// that a slow frame now and then (a state compressed for a joiner) doesn't count
+constexpr size_t LOAD_FRAMES = 60;
 // hello to welcome took 0.25 s at most in Europe: a lost hello goes again about when its answer would come
 constexpr u32 HELLO_MS = 250;
 constexpr u32 PUNCH_MS = HELLO_MS;      // the same for a lost punch
@@ -411,8 +416,11 @@ private:
 		u32 echo_time = 0;          // sent back, for the round trip
 		u32 echo_rx_ms = 0;
 		float rtt = 0;
+		float rtt_max[2] = { };     // the worst of the last samples, and of those before
+		size_t rtt_samples = 0;
 		float advantage = 0;        // frames I am ahead of them
 		float their_advantage = 0;  // as they see it
+		int redo = 0;               // frames it can redo within one, as it says; none until it knows
 		transfer_out tx;
 		bool session_ready = false;
 		bool resync_wanted = false;
@@ -475,6 +483,9 @@ private:
 	void start_session_buffers();
 
 	u32 best(int player, s64 frame) const;
+	float delay_need() const;
+	void publish_inputs(s64 frame);
+	void measure_load();
 	void predict(s64 frame);
 	u32 frame_word(int player, s64 frame) const override { return player == m_me ? m_input[player][frame % INPUT_RING] : m_used[player][frame % INPUT_RING]; }
 	void apply_frame_to_ports(s64 frame) override;
@@ -565,8 +576,6 @@ private:
 	// the host's options, sent to the clients
 	u32 m_session = 0;
 	int m_me = 0;
-	int m_delay = 1;
-	int m_window = 10;
 	int m_hash_every = 30;
 	u64 m_base_time = 0;
 
@@ -587,6 +596,14 @@ private:
 	u32 m_resync_ms = 0;
 
 	float m_frame_ms = 1000.0f / 60;
+	int m_delay = MIN_DELAY;        // of our inputs
+	u32 m_sample = 0;               // the local inputs of the frame running
+	int m_redo = 0;
+	std::vector<float> m_busy;      // ms of the last frames, besides waiting and redoing
+	double m_load_mark = 0;         // ms so far besides waiting and redoing
+	double m_load_redo_ms = 0;      // redoing, at the last estimate
+	u64 m_load_redo_frames = 0;
+	float m_redo_cost = 0;          // ms of a frame redone
 	int m_base_speed = 1000;
 	bool m_slowed = false;
 
@@ -661,7 +678,9 @@ private:
 	std::deque<delayed_packet> m_sim_queue;
 
 	u64 m_rollbacks = 0, m_resim_frames = 0, m_unrecoverable = 0;
-	u64 m_desyncs = 0, m_resyncs = 0, m_hash_compared = 0, m_stall_ms = 0, m_slow_frames = 0;
+	u64 m_desyncs = 0, m_resyncs = 0, m_hash_compared = 0, m_slow_frames = 0;
+	osd_ticks_t m_stall_ticks = 0;
+	int m_delay_max = MIN_DELAY, m_delay_changes = 0;
 	u64 m_depth_histogram[64] = { };
 	double m_rollback_ms_total = 0, m_rollback_ms_max = 0;
 	osd_ticks_t m_session_start = 0;
@@ -719,10 +738,6 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 			throw emu_fatalerror("Netplay: %s can't be played online: it has controls for one player only, or analog ones", machine.system().type.fullname());
 		m_players = most;
 		m_wait_for = machine.options().netplay_players() ? std::clamp(machine.options().netplay_players(), 2, most) : most;
-		m_delay = machine.options().get_entry(OPTION_NETPLAY_DELAY)->priority() == OPTION_PRIORITY_DEFAULT
-				? default_delay(machine.system())
-				: std::clamp(machine.options().netplay_delay(), 0, 8);
-		m_window = std::clamp(machine.options().netplay_window(), 1, 60);
 		m_hash_every = std::clamp(machine.options().netplay_hash_every(), 1, 3600);
 		m_session = u32(random_u64()) | 1;
 		// another port if taken: the code finds it anyway, and the host writes to the players at home (sweep_lan)
@@ -860,7 +875,7 @@ void netplay_session::compute_signature()
 
 void netplay_session::start_session_buffers()
 {
-	allocate_slots(m_window + 3);
+	allocate_slots(WINDOW + 3);
 	m_hashes.assign(64, hash_entry());
 
 	// sound samples are floating point, which builds may round differently; the chips' state stays
@@ -902,7 +917,7 @@ void netplay_session::frame_inputs_begin()
 	const s64 f = m_cur + 1;
 	predict(f);
 	if (!m_resim)
-		m_input[m_me][(f + m_delay) % INPUT_RING] = (m_bot_seed && f + m_delay >= m_back) ? bot_word(m_bot_seed, m_me, f + m_delay) : 0;
+		m_sample = m_bot_seed ? bot_word(m_bot_seed, m_me, f + m_delay) : 0;
 }
 
 void netplay_session::frame_inputs_port(ioport_port &port)
@@ -915,12 +930,77 @@ void netplay_session::frame_inputs_port(ioport_port &port)
 
 	const int index = m_port_index[&port];
 	const s64 f = m_cur + 1;
-	if (!m_resim && !m_bot_seed && f + m_delay >= m_back)
-	{
-		// the local player's controls are those of player 1, whatever seat they got
-		m_input[m_me][(f + m_delay) % INPUT_RING] |= local_word(index, port.live().digital);
-	}
+	// the local player's controls are those of player 1, whatever seat they got
+	if (!m_resim && !m_bot_seed)
+		m_sample |= local_word(index, port.live().digital);
 	port.live().digital = compose(index, f);
+}
+
+// frames of delay for every other player to redo at most what it can within a frame, and to have
+// our inputs before its window ends even when lost once; they take half the worst round trip of
+// the last one or two LOAD_FRAMES samples
+float netplay_session::delay_need() const
+{
+	float need = 0;
+	for (int p = 0; p < m_players; p++)
+	{
+		const peer &pr = m_peers[p];
+		if (p == m_me || !pr.connected || !pr.rtt)
+			continue;
+		const float trip = std::max(pr.rtt_max[0], pr.rtt_max[1]) / 2 / m_frame_ms;
+		need = std::max({ need, trip - pr.redo, trip + 1 - (WINDOW - 1) });
+	}
+	return need;
+}
+
+// the inputs read for this frame count for frame + m_delay. They go with their frame, so each player
+// has a delay of its own: it grows by giving the frame skipped the inputs before, and shrinks by
+// dropping inputs equal to those before, so nothing is lost
+void netplay_session::publish_inputs(s64 frame)
+{
+	const s64 last = frame - 1 + m_delay;
+	const u32 previous = m_input[m_me][last % INPUT_RING];
+	const float need = delay_need();
+	if (m_delay > MIN_DELAY && need <= m_delay - 1 && m_sample == previous)
+	{
+		m_delay--;
+		m_delay_changes++;
+	}
+	else
+	{
+		if (need > m_delay && m_delay < FAR_RTT_MS / 2 / m_frame_ms)
+		{
+			m_input[m_me][(last + 1) % INPUT_RING] = previous;
+			m_delay++;
+			m_delay_changes++;
+			m_delay_max = std::max(m_delay_max, m_delay);
+		}
+		m_input[m_me][(frame + m_delay) % INPUT_RING] = m_sample;
+	}
+	m_known[m_me] = frame + m_delay;
+}
+
+// the frames this machine can redo within one: from the time a frame takes besides waiting and
+// redoing, and from what a redone frame costs
+void netplay_session::measure_load()
+{
+	const double mark = double(osd_ticks() - m_machine.video().idle_ticks() - m_stall_ticks) * 1000 / osd_ticks_per_second() - m_rollback_ms_total;
+	if (m_load_mark)
+		m_busy.push_back(float(mark - m_load_mark));
+	m_load_mark = mark;
+	if (m_busy.size() < LOAD_FRAMES)
+		return;
+
+	const auto high = m_busy.begin() + LOAD_FRAMES * 9 / 10;
+	std::nth_element(m_busy.begin(), high, m_busy.end());
+	const float busy = *high;
+	m_busy.clear();
+	if (m_resim_frames > m_load_redo_frames)
+		m_redo_cost = float((m_rollback_ms_total - m_load_redo_ms) / (m_resim_frames - m_load_redo_frames));
+	m_load_redo_ms = m_rollback_ms_total;
+	m_load_redo_frames = m_resim_frames;
+	// until something is redone, a frame redone costs as much as one played
+	m_redo = std::clamp(int((m_frame_ms - busy) / std::max(m_redo_cost ? m_redo_cost : busy, 0.01f)), 0, WINDOW - 1);
 }
 
 void netplay_session::predict(s64 frame)
@@ -969,7 +1049,7 @@ void netplay_session::resim_frame_done()
 
 void netplay_session::rollback(s64 boundary)
 {
-	const s64 oldest = std::max(m_floor, boundary - m_window);
+	const s64 oldest = std::max(m_floor, boundary - WINDOW);
 	s64 frame = m_rollback_to;
 	m_rollback_to = NO_FRAME;
 
@@ -1247,7 +1327,7 @@ void netplay_session::finish_lobby()
 	m_session_start = osd_ticks();
 	m_machine.sound().set_output_delay(attotime::from_msec(m_audio_delay_ms));
 	m_machine.popmessage("Player %d of %d", m_me + 1, m_players);
-	note("session started as player %d of %d, delay %d, window %d", m_me + 1, m_players, m_delay, m_window);
+	note("session started as player %d of %d", m_me + 1, m_players);
 }
 
 
@@ -1274,7 +1354,8 @@ void netplay_session::post_timeslice()
 void netplay_session::run_frame()
 {
 	s64 b = ++m_cur;
-	m_known[m_me] = b + m_delay;
+	measure_load();
+	publish_inputs(b);
 	const bool saved = save_slot(b);
 	if (b == m_test_fault)
 		corrupt_state(b);
@@ -1309,7 +1390,7 @@ void netplay_session::run_frame()
 		for (int p = 0; p < m_players; p++)
 			if (p != m_me)
 				slowest = std::min(slowest, m_known[p]);
-		if (b - slowest < m_window)
+		if (b - slowest < WINDOW)
 			break;
 		stall_tick();
 		if (!saved && m_rollback_to != NO_FRAME)
@@ -1334,7 +1415,7 @@ void netplay_session::run_frame()
 
 void netplay_session::stall_tick()
 {
-	const u32 start = now_ms();
+	const osd_ticks_t start = osd_ticks();
 	osd_sleep(osd_ticks_per_second() / 1000);
 	poll();
 	send_chunk_ack();
@@ -1350,7 +1431,7 @@ void netplay_session::stall_tick()
 	else
 		client_game_tick(now_ms());
 	m_machine.osd().update(true);
-	m_stall_ms += now_ms() - start;
+	m_stall_ticks += osd_ticks() - start;
 }
 
 
@@ -2269,8 +2350,6 @@ void netplay_session::send_welcome(int player, const util::sha1_t &key)
 	packet_writer out(P_WELCOME, m_session, 0);
 	out.put<u8>(u8(player));
 	out.put<u8>(u8(m_players));
-	out.put<u8>(u8(m_delay));
-	out.put<u8>(u8(m_window));
 	out.put<u16>(u16(m_hash_every));
 	out.put<u64>(m_base_time);
 	out.put_string(m_room); // for whoever typed the address: the key of the next packets
@@ -2317,8 +2396,6 @@ void netplay_session::handle_welcome(const udp::endpoint &from, packet_reader &i
 {
 	const int player = in.get<u8>();
 	const int players = in.get<u8>();
-	const int delay = in.get<u8>();
-	const int window = in.get<u8>();
 	const int hash_every = in.get<u16>();
 	const u64 base_time = in.get<u64>();
 	const std::string room = in.get_string();
@@ -2330,7 +2407,7 @@ void netplay_session::handle_welcome(const udp::endpoint &from, packet_reader &i
 	std::vector<other> others(in.get<u8>());
 	for (other &o : others)
 		o = get_player(in);
-	if (!in.ok() || players < 2 || players > MAX_PLAYERS || player < 1 || player >= players || delay > 8 || window < 1 || window > 60 || hash_every < 1 || others.size() >= MAX_PLAYERS)
+	if (!in.ok() || players < 2 || players > MAX_PLAYERS || player < 1 || player >= players || hash_every < 1 || others.size() >= MAX_PLAYERS)
 		return;
 	m_me = player;
 	m_others = std::move(others);
@@ -2345,8 +2422,6 @@ void netplay_session::handle_welcome(const udp::endpoint &from, packet_reader &i
 	}
 	m_host_endpoint = from;
 	m_players = players;
-	m_delay = delay;
-	m_window = window;
 	m_hash_every = hash_every;
 	m_machine.set_base_time(time_t(base_time));
 
@@ -2461,6 +2536,7 @@ void netplay_session::send_inputs()
 		out.put<u32>(pr.echo_time);
 		out.put<u16>(u16(std::min<u32>(now - pr.echo_rx_ms, 65535)));
 		out.put<s16>(s16(std::clamp(pr.advantage * 16, -32000.0f, 32000.0f)));
+		out.put<u8>(u8(m_redo));
 		out.put<u16>(u16(m_notes[p].size()));
 		out.put<u32>(m_roster_version);
 		out.put<s32>(s32(first));
@@ -2490,6 +2566,7 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 	const u32 echo = in.get<u32>();
 	const u32 hold = in.get<u16>();
 	const float advantage = float(in.get<s16>()) / 16;
+	const int redo = in.get<u8>();
 	const size_t notes = in.get<u16>();
 	const u32 roster = in.get<u32>();
 	const s64 first = in.get<s32>();
@@ -2507,13 +2584,22 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 		pr.frame = frame;
 		pr.frame_rx_ms = now;
 		pr.their_advantage = advantage;
+		pr.redo = redo;
 		pr.echo_time = time;
 		pr.echo_rx_ms = now;
 		if (echo)
 		{
 			const float sample = float(now - echo - hold);
 			if (sample >= 0 && sample < 10000)
+			{
 				pr.rtt = pr.rtt ? pr.rtt + (sample - pr.rtt) * 0.1f : sample;
+				pr.rtt_max[0] = std::max(pr.rtt_max[0], sample);
+				if (++pr.rtt_samples == LOAD_FRAMES)
+				{
+					pr.rtt_max[1] = std::exchange(pr.rtt_max[0], 0.0f);
+					pr.rtt_samples = 0;
+				}
+			}
 		}
 	}
 	if (acked <= m_known[m_me])
@@ -2750,6 +2836,8 @@ void netplay_session::end_session(const char *reason, bool rejoin)
 {
 	if (m_phase == phase::ENDED)
 		return;
+	if (m_phase == phase::RUNNING)
+		note("frames of input delay: %d, at most %d; frames this machine redoes within one: %d", m_delay, m_delay_max, m_redo);
 	note("session over: %s%s", reason, rejoin ? ": joining again" : "");
 	s_end_message = rejoin ? std::string() : util::string_format("%s: %s", m_machine.system().type.fullname(), reason);
 	send_bye();
@@ -2851,12 +2939,12 @@ void netplay_session::write_log()
 			rtt = std::max(rtt, m_peers[p].rtt);
 	std::fprintf(f, "{\"system\":\"%s\",\"player\":%d,\"players\":%d,\"frames\":%lld,\"seconds\":%.2f,\"end\":\"%s\",\"rtt_ms\":%.1f,"
 			"\"rollbacks\":%llu,\"resim_frames\":%llu,\"rollback_ms_max\":%.2f,\"rollback_ms_mean\":%.2f,\"unrecoverable\":%llu,\"saves_failed\":%llu,"
-			"\"hash_compared\":%llu,\"desyncs\":%llu,\"resyncs\":%llu,\"stall_ms\":%llu,\"slow_frames\":%llu,\"tx_bytes\":%llu,\"rx_bytes\":%llu,\"send_failed\":%u,\"silence_ms_max\":%u,\"welcome_ms\":%d,\"depth\":[",
+			"\"hash_compared\":%llu,\"desyncs\":%llu,\"resyncs\":%llu,\"stall_ms\":%llu,\"slow_frames\":%llu,\"delay_changes\":%d,\"tx_bytes\":%llu,\"rx_bytes\":%llu,\"send_failed\":%u,\"silence_ms_max\":%u,\"welcome_ms\":%d,\"depth\":[",
 			m_machine.system().name, m_me + 1, m_players, (long long)m_cur, seconds, m_end_reason.c_str(), rtt,
 			(unsigned long long)m_rollbacks, (unsigned long long)m_resim_frames, m_rollback_ms_max, m_rollbacks ? m_rollback_ms_total / m_rollbacks : 0.0,
 			(unsigned long long)m_unrecoverable, (unsigned long long)m_saves_failed,
 			(unsigned long long)m_hash_compared, (unsigned long long)m_desyncs, (unsigned long long)m_resyncs,
-			(unsigned long long)m_stall_ms, (unsigned long long)m_slow_frames, (unsigned long long)m_tx_bytes, (unsigned long long)m_rx_bytes, m_send_failed, m_silence_max_ms, m_welcome_ms);
+			(unsigned long long)(m_stall_ticks * 1000 / osd_ticks_per_second()), (unsigned long long)m_slow_frames, m_delay_changes, (unsigned long long)m_tx_bytes, (unsigned long long)m_rx_bytes, m_send_failed, m_silence_max_ms, m_welcome_ms);
 	for (size_t i = 0; i < std::size(m_depth_histogram); i++)
 		std::fprintf(f, "%s%llu", i ? "," : "", (unsigned long long)m_depth_histogram[i]);
 	std::fprintf(f, "]}\n");
@@ -2869,20 +2957,6 @@ void netplay_session::write_log()
 std::unique_ptr<rollback_session> create_netplay_session(running_machine &machine, bool host)
 {
 	return std::make_unique<netplay_session>(machine, host);
-}
-
-
-int rollback_session::default_delay(const game_driver &system)
-{
-	// on a Steam Deck these redo few frames within a frame: more delay, enough for a 100 ms ping
-	static const std::pair<std::string_view, int> heavy[] = {
-		{ "gdarius2", 3 }, { "legendoh", 3 }, { "raystorm", 3 }, { "rdft", 3 }, { "rdft2", 3 }, { "rfjet", 3 },
-		{ "aoh", 2 }, { "battlera", 2 }, { "dmnfrnt", 2 }, { "dragnblz", 2 }, { "gunbird2", 2 }, { "kov2", 2 },
-		{ "rthun2", 2 }, { "s1945ii", 2 }, { "s1945iii", 2 }, { "soldivid", 2 }, { "thndzone", 2 } };
-	for (const auto &[name, delay] : heavy)
-		if (name == system.name || name == system.parent)
-			return delay;
-	return 1;
 }
 
 

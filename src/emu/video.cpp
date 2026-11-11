@@ -838,6 +838,7 @@ osd_ticks_t video_manager::throttle_until_ticks(osd_ticks_t target_ticks)
 	// loop until we reach our target
 	auto profile = g_profiler.start(PROFILER_IDLE);
 	osd_ticks_t current_ticks = osd_ticks();
+	osd_ticks_t const start_ticks = current_ticks;
 	while (current_ticks < target_ticks)
 	{
 		// compute how much time to sleep for, taking into account the average oversleep
@@ -873,6 +874,7 @@ osd_ticks_t video_manager::throttle_until_ticks(osd_ticks_t target_ticks)
 		current_ticks = new_ticks;
 	}
 
+	m_idle_ticks += current_ticks - start_ticks;
 	return current_ticks;
 }
 

@@ -181,8 +181,6 @@
 #define OPTION_NETPLAY_HOST         "netplay_host"
 #define OPTION_NETPLAY_JOIN         "netplay_join"
 #define OPTION_NETPLAY_PLAYERS      "netplay_players"
-#define OPTION_NETPLAY_DELAY        "netplay_delay"
-#define OPTION_NETPLAY_WINDOW       "netplay_window"
 #define OPTION_NETPLAY_HASH_EVERY   "netplay_hash_every"
 #define OPTION_NETPLAY_TRACKERS     "netplay_trackers"
 #define OPTION_NETPLAY_STUN         "netplay_stun"
@@ -473,8 +471,6 @@ public:
 	int netplay_host_port() const { return int_value(OPTION_NETPLAY_HOST); }
 	const char *netplay_join() const { return value(OPTION_NETPLAY_JOIN); }
 	int netplay_players() const { return int_value(OPTION_NETPLAY_PLAYERS); }
-	int netplay_delay() const { return int_value(OPTION_NETPLAY_DELAY); }
-	int netplay_window() const { return int_value(OPTION_NETPLAY_WINDOW); }
 	int netplay_hash_every() const { return int_value(OPTION_NETPLAY_HASH_EVERY); }
 	const char *netplay_trackers() const { return value(OPTION_NETPLAY_TRACKERS); }
 	const char *netplay_stun() const { return value(OPTION_NETPLAY_STUN); }

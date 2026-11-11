@@ -224,12 +224,10 @@ private:
 	std::string join_target() const;
 	std::string shown() const;
 
-	std::string delay_text() const;
 
 	game_driver const &m_driver;
 	bool m_multiplayer;             // controls for two players or more
 	std::string m_room;
-	int m_delay;                    // of the inputs, for everybody, if hosting
 };
 
 std::string menu_select_launch::reselect_last::s_driver;
@@ -403,7 +401,6 @@ void *const ITEMREF_ALONE = reinterpret_cast<void *>(1);
 void *const ITEMREF_HOST = reinterpret_cast<void *>(2);
 void *const ITEMREF_JOIN = reinterpret_cast<void *>(3);
 void *const ITEMREF_REPORT = reinterpret_cast<void *>(4);
-void *const ITEMREF_DELAY = reinterpret_cast<void *>(5);
 constexpr int HOST_PORT = 7000;     // where players at home look for the host
 constexpr size_t JOIN_SIZE = 21;    // or an address, for a VPN: 100.101.102.103:7000
 
@@ -422,7 +419,6 @@ void menu_select_launch::select_netplay(game_driver const &driver)
 menu_select_launch::netplay_selection::netplay_selection(mame_ui_manager &mui, render_target &target, game_driver const &driver)
 	: menu(mui, target)
 	, m_driver(driver)
-	, m_delay(rollback_session::default_delay(driver))
 {
 	set_heading(driver.type.fullname());
 
@@ -443,8 +439,6 @@ void menu_select_launch::netplay_selection::populate()
 		item_append(_("Join Online, Room Code"), shown() + '_', 0, ITEMREF_JOIN);
 	}
 	item_append(menu_item_type::SEPARATOR);
-	if (m_multiplayer)
-		item_append(_("Input Delay When Hosting"), delay_text(), get_arrow_flags(rollback_session::MIN_DELAY, rollback_session::MAX_DELAY, m_delay), ITEMREF_DELAY);
 	item_append(_("Report a Problem"), 0, ITEMREF_REPORT);
 	item_append(menu_item_type::SEPARATOR);
 }
@@ -472,21 +466,6 @@ bool menu_select_launch::netplay_selection::handle(event const *ev)
 				launch(0, join_target());
 			else
 				ui().popup_time(3, "%s", _("Type the room code that the host sees, like K7Q-M3X"));
-		}
-		break;
-
-	case IPT_UI_LEFT:
-	case IPT_UI_RIGHT:
-		if (ev->itemref == ITEMREF_DELAY)
-		{
-			const int delay = std::clamp(m_delay + ((ev->iptkey == IPT_UI_LEFT) ? -1 : 1), rollback_session::MIN_DELAY, rollback_session::MAX_DELAY);
-			if (delay != m_delay)
-			{
-				m_delay = delay;
-				ev->item->set_subtext(delay_text());
-				ev->item->set_flags(get_arrow_flags(rollback_session::MIN_DELAY, rollback_session::MAX_DELAY, m_delay));
-				return true;
-			}
 		}
 		break;
 
@@ -532,15 +511,6 @@ std::string menu_select_launch::netplay_selection::join_target() const
 	return rollback_session::join_target(m_room);
 }
 
-// e.g. "2 frames (default)": the system's own is the default
-std::string menu_select_launch::netplay_selection::delay_text() const
-{
-	std::string text = string_format((m_delay == 1) ? _("%1$d frame") : _("%1$d frames"), m_delay);
-	if (m_delay == rollback_session::default_delay(m_driver))
-		text += _(" (default)");
-	return text;
-}
-
 // a code as the host sees it, whatever the case and the hyphen typed
 std::string menu_select_launch::netplay_selection::shown() const
 {
@@ -562,7 +532,6 @@ void menu_select_launch::netplay_selection::launch(int port, std::string const &
 	options.set_value(OPTION_NETPLAY_HOST, port, OPTION_PRIORITY_CMDLINE);
 	options.set_value(OPTION_NETPLAY_JOIN, room, OPTION_PRIORITY_CMDLINE);
 	options.set_value(OPTION_NETPLAY_PLAYERS, 0, OPTION_PRIORITY_CMDLINE);
-	options.set_value(OPTION_NETPLAY_DELAY, m_delay, OPTION_PRIORITY_CMDLINE);
 	launch_system(ui(), m_driver, nullptr, nullptr, nullptr);
 }
 
