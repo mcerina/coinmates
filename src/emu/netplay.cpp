@@ -83,7 +83,7 @@ using udp = asio::ip::udp;
 
 constexpr u32 MAGIC = 0x4d4e5031;
 constexpr int INPUT_RING = 1024;        // frames of input kept: must cover a state transfer
-constexpr int MAX_INPUTS_PER_PACKET = 64;   // unacknowledged inputs: a far round trip (FAR_RTT_MS) is 39 frames
+constexpr int MAX_INPUTS_PER_PACKET = 64;   // unacknowledged inputs: a far round trip (FAR_RTT_MS) is 39 frames, plus a lost packet each way
 constexpr u32 CHUNK_SIZE = 1200;        // under every path's MTU, as QUIC
 constexpr u32 CHUNK_WINDOW = 256;       // chunks in flight: an acknowledgement has a bit for each
 // choices, not measured against a phone's upload: ~2.4 MB/s before the game, ~600 KB/s in it, as the
@@ -94,10 +94,10 @@ constexpr s64 BACK_FRAMES = 180;        // a choice: 3 s for a late joiner to ca
 constexpr size_t TAG_SIZE = 8;
 constexpr u32 AUDIO_DELAY_MS = 60;      // 3 frames of the 20 ms sound updates: rollbacks within it aren't heard; ~125 ms isn't noticed
 constexpr u32 FAR_RTT_MS = netplay_meet::FAR_RTT_MS;
-constexpr int WINDOW = 10;              // a choice: the most frames predicted, and redone; as many states kept
+constexpr int WINDOW = 10;              // a choice: the most frames predicted, and redone; a PC redoes 9 within a frame in all games but one
 constexpr int MIN_DELAY = 1;            // a frame's own inputs are all read only after its ports are set
-// a choice: samples of each estimate of the load and of the worst RTT; the load's 90th percentile, so
-// that a slow frame now and then (a state compressed for a joiner) doesn't count
+// a choice: samples of each estimate of the load (frames: 1 s) and of the worst RTT (packets: 1-2 s);
+// the load's sixth slowest, so that a slow frame now and then (a state compressed for a joiner) doesn't count
 constexpr size_t LOAD_FRAMES = 60;
 // hello to welcome took 0.25 s at most in Europe: a lost hello goes again about when its answer would come
 constexpr u32 HELLO_MS = 250;
@@ -936,7 +936,7 @@ void netplay_session::frame_inputs_port(ioport_port &port)
 
 // frames of delay for every other player to redo at most what it can within a frame, and to have
 // our inputs before its window ends even when lost once; they take half the worst round trip of
-// the last one or two LOAD_FRAMES samples
+// the last LOAD_FRAMES to 2 x LOAD_FRAMES packets
 float netplay_session::delay_need() const
 {
 	float need = 0;
@@ -966,6 +966,7 @@ void netplay_session::publish_inputs(s64 frame)
 	}
 	else
 	{
+		// at most what a machine that redoes nothing needs far away
 		if (need > m_delay && m_delay < FAR_RTT_MS / 2 / m_frame_ms)
 		{
 			m_input[m_me][(last + 1) % INPUT_RING] = previous;
