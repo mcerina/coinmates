@@ -11,6 +11,7 @@
 #include "emu.h"
 
 #include "resampler.h"
+#include "rollback.h"
 #include "sound.h"
 #include "speaker.h"
 
@@ -109,12 +110,13 @@ template<typename S> void emu::detail::output_buffer_flat<S>::register_save_stat
 {
 	auto &save = device.machine().save();
 
-	// Only the live window (history + samples since the last sync, a
+	// Online only the live window (history + samples since the last sync, a
 	// few tens of milliseconds) is state; presave() moves it to the
-	// start of the buffer so that a fraction of the buffer is enough
+	// start of the buffer so that a fraction of the buffer is enough.
+	// Elsewhere the whole buffer, as a stream's rate can rise past that
 	if(m_channels) {
 		u32 const size = m_buffer[0].size();
-		m_save_size = std::min<u32>(size, size / 16 + 1024);
+		m_save_size = rollback_session::requested(device.machine().options()) ? std::min<u32>(size, size / 16 + 1024) : size;
 		for(unsigned int i = 0; i != m_buffer.size(); i++)
 			save.save_pointer(&device, id1, id2, i, m_buffer[i].data(), "m_buffer[i]", m_save_size);
 		save.register_presave(save_prepost_delegate(FUNC(output_buffer_flat<S>::presave), this));

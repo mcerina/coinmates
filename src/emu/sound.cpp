@@ -344,7 +344,7 @@ bool sound_manager::output_speakers(attotime now)
 {
 	bool output = false;
 	m_record_samples = 0;
-	const u32 room = m_record_buffer.size() / m_outputs_count;
+	const u32 room = m_outputs_count ? m_record_buffer.size() / m_outputs_count : 0; // none: the system list
 	for(auto &spk : m_speakers) {
 		auto block = std::find_if(spk.m_delayed.begin(), spk.m_delayed.end(), [&now] (const auto &b) { return b.first == now; });
 		if(block != spk.m_delayed.end())
@@ -361,14 +361,17 @@ bool sound_manager::output_speakers(attotime now)
 			const u32 count = channels.empty() ? 0 : channels[0].size();
 			const u32 recorded = done < room ? std::min(count, room - done) : 0;
 			s16 *outb = m_record_buffer.data() + done * m_outputs_count + spk.m_first_output;
-			spk.m_buffer.prepare_space(count);
-			for(u32 channel = 0; channel != channels.size(); channel ++, outb ++) {
-				std::copy(channels[channel].begin(), channels[channel].end(), spk.m_buffer.ptrw(channel, 0));
-				s16 *outb1 = outb;
-				for(u32 sample = 0; sample != recorded; sample ++, outb1 += m_outputs_count)
-					*outb1 = std::clamp(int(channels[channel][sample] * 32768), -32768, 32767);
+			// an empty block: at a full buffer, there is no sample to point at
+			if(count) {
+				spk.m_buffer.prepare_space(count);
+				for(u32 channel = 0; channel != channels.size(); channel ++, outb ++) {
+					std::copy(channels[channel].begin(), channels[channel].end(), spk.m_buffer.ptrw(channel, 0));
+					s16 *outb1 = outb;
+					for(u32 sample = 0; sample != recorded; sample ++, outb1 += m_outputs_count)
+						*outb1 = std::clamp(int(channels[channel][sample] * 32768), -32768, 32767);
+				}
+				spk.m_buffer.commit(count);
 			}
-			spk.m_buffer.commit(count);
 			done += count;
 			output = output || count;
 			spk.m_delayed.erase(spk.m_delayed.begin());
