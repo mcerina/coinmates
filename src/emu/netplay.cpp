@@ -951,9 +951,9 @@ void netplay_session::frame_inputs_port(ioport_port &port)
 // frames of delay for every other player to redo at most what it can within a frame, and to have
 // our inputs before its window ends even when lost once. Their trip: how many frames after they were
 // sent the second slowest of our last LOAD_FRAMES to 2 x LOAD_FRAMES new inputs came, as they measure
-// it on the frames, as WebRTC's jitter buffer does on the media timestamps: a phone stops sending for
-// a while, one way only. An input slow alone is left to the rollbacks. A frame more, a choice: on a
-// phone, as few stalls as by the round trip, with less delay and half its peaks
+// it on their frames, as WebRTC's jitter buffer does on the media timestamps: their frames count the way
+// and how far ahead of us the time sync leaves them, which is what makes them wait. An input slow alone
+// is left to the rollbacks. A frame more, a choice: fewer stalls on a phone
 float netplay_session::delay_need() const
 {
 	float need = 0;
@@ -983,8 +983,9 @@ void netplay_session::publish_inputs(s64 frame)
 	}
 	else
 	{
-		// at most what a machine that redoes nothing needs far away
-		if (need > m_delay && m_delay < FAR_RTT_MS / 2 / m_frame_ms)
+		// at most what a machine that redoes nothing needs far away: half the round trip, the frame that a
+		// sample adds to it and the frame more
+		if (need > m_delay && m_delay < FAR_RTT_MS / 2 / m_frame_ms + 2)
 		{
 			m_input[m_me][(last + 1) % INPUT_RING] = previous;
 			m_delay++;
@@ -2603,6 +2604,7 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 
 	const u32 now = now_ms();
 	float sample = -1;
+	const s64 before = pr.frame;
 	if (frame >= pr.frame)
 	{
 		pr.frame = frame;
@@ -2616,9 +2618,7 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 		{
 			sample = float(now - echo - hold);
 			if (sample >= 0 && sample < 10000)
-			{
 				pr.rtt = pr.rtt ? pr.rtt + (sample - pr.rtt) * 0.1f : sample;
-			}
 		}
 	}
 	if (acked <= m_known[m_me])
@@ -2639,11 +2639,13 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 			m_rollback_to = std::min(m_rollback_to, f);
 	}
 
-	// how late the oldest of the new inputs comes: its packet's frames on the way, and one for each input
-	// past the first, whose packet was lost or overtaken. A packet sent again while they wait brings none,
-	// and says nothing of the way
-	const bool brought = m_known[sender] > known;
-	const s32 came = s32(m_cur - frame) + s32(m_known[sender] - known - 1);
+	// how late the oldest of the new inputs comes, in frames since it was sent: with the packet after
+	// their packet before, if that one was lost or overtaken. Counting the inputs would add one each time
+	// they delay one more, two inputs at once: that only without their packet before, after they join
+	// again. A packet sent again while they wait brings none, and says nothing of the way
+	const bool brought = m_known[sender] > known && m_phase == phase::RUNNING;
+	const s64 sent = std::max(frame - (m_known[sender] - known - 1), std::min(frame, before + 1));
+	const s32 came = s32(m_cur - sent);
 	if (brought)
 	{
 		if (!pr.late_samples)
