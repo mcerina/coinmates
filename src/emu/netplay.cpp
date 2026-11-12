@@ -22,8 +22,9 @@
     separated by commas):
       bot=<seed>        a deterministic bot plays instead of the local player
       frames=<n>        leave at frame n
-      log=<path>        write <path>.hash.csv, <path>.trip.csv (each input packet: when, from whom, sent
-                        how long before by their clock, the round trip it gave) and <path>.json
+      log=<path>        write <path>.hash.csv, <path>.json and <path>.trip.csv: each input packet, when,
+                        from whom, if it brought new inputs, sent how long before by their clock and how
+                        many frames before, the round trip it gave
       sim=<ms>:<ms>:<%>[:<ms>:<ms>] delay, jitter and loss of every packet sent; and every that many ms,
                         hold them that long and send them in order, as a phone's radio does
       cut=<frame>:<ms>  lose every packet for that long from that frame on, once
@@ -98,8 +99,9 @@ constexpr u32 AUDIO_DELAY_MS = 60;      // 3 frames of the 20 ms sound updates: 
 constexpr u32 FAR_RTT_MS = netplay_meet::FAR_RTT_MS;
 constexpr int WINDOW = 10;              // a choice: the most frames predicted, and redone; a PC redoes 9 within a frame in all games but one
 constexpr int MIN_DELAY = 1;            // a frame's own inputs are all read only after its ports are set
-// a choice: samples of each estimate of the load (frames: 1 s) and of the worst RTT (packets: 1-2 s);
-// the load's sixth slowest, so that a slow frame now and then (a state compressed for a joiner) doesn't count
+// a choice: samples of each estimate of the load (frames: 1 s) and of how late packets come (packets:
+// 1 s); the load's sixth slowest, so that a slow frame now and then (a state compressed for a joiner)
+// doesn't count; the packets' second slowest (about the 97th percentile over 1-2 s), so that one alone doesn't
 constexpr size_t LOAD_FRAMES = 60;
 // hello to welcome took 0.25 s at most in Europe: a lost hello goes again about when its answer would come
 constexpr u32 HELLO_MS = 250;
@@ -419,9 +421,11 @@ private:
 		u32 echo_time = 0;          // sent back, for the round trip
 		u32 echo_rx_ms = 0;
 		float rtt = 0;
-		float rtt_slow[2] = { };    // the two slowest of the last samples
-		float rtt_slow_before = 0;  // the second slowest of the samples before
-		size_t rtt_samples = 0;
+		// frames late that their new inputs come, measured here: the two slowest of the last samples, and
+		// the second slowest of those before
+		s32 late_slow[2] = { }, late_before = 0;
+		size_t late_samples = 0;
+		int late = 0;               // the same of our packets, as they tell
 		float advantage = 0;        // frames I am ahead of them
 		float their_advantage = 0;  // as they see it
 		int redo = 0;               // frames it can redo within one, as it says; none until it knows
@@ -944,18 +948,19 @@ void netplay_session::frame_inputs_port(ioport_port &port)
 }
 
 // frames of delay for every other player to redo at most what it can within a frame, and to have
-// our inputs before its window ends even when lost once. Their trip: the second slowest round trip of
-// the last LOAD_FRAMES to 2 x LOAD_FRAMES packets, all of its excess over the mean as if on the way
-// to them (a phone's sending stops for a while); a packet slow alone is left to the rollbacks
+// our inputs before its window ends even when lost once. Their trip: how many frames after they were
+// sent the second slowest of our last LOAD_FRAMES to 2 x LOAD_FRAMES new inputs came, as they measure
+// it on the frames, as WebRTC's jitter buffer does on the media timestamps: a phone stops sending for
+// a while, one way only. An input slow alone is left to the rollbacks
 float netplay_session::delay_need() const
 {
 	float need = 0;
 	for (int p = 0; p < m_players; p++)
 	{
 		const peer &pr = m_peers[p];
-		if (p == m_me || !pr.connected || !pr.rtt)
+		if (p == m_me || !pr.connected)
 			continue;
-		const float trip = (std::max(pr.rtt_slow[1], pr.rtt_slow_before) - pr.rtt / 2) / m_frame_ms;
+		const float trip = float(pr.late);
 		need = std::max({ need, trip - pr.redo, trip + 1 - (WINDOW - 1) });
 	}
 	return need;
@@ -2548,6 +2553,7 @@ void netplay_session::send_inputs()
 		out.put<u16>(u16(std::min<u32>(now - pr.echo_rx_ms, 65535)));
 		out.put<s16>(s16(std::clamp(pr.advantage * 16, -32000.0f, 32000.0f)));
 		out.put<u8>(u8(m_redo));
+		out.put<u8>(u8(std::clamp(std::max(pr.late_slow[1], pr.late_before), 0, 255)));
 		out.put<u16>(u16(m_notes[p].size()));
 		out.put<u32>(m_roster_version);
 		out.put<s32>(s32(first));
@@ -2578,6 +2584,7 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 	const u32 hold = in.get<u16>();
 	const float advantage = float(in.get<s16>()) / 16;
 	const int redo = in.get<u8>();
+	const int late = in.get<u8>();
 	const size_t notes = in.get<u16>();
 	const u32 roster = in.get<u32>();
 	const s64 first = in.get<s32>();
@@ -2597,6 +2604,7 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 		pr.frame_rx_ms = now;
 		pr.their_advantage = advantage;
 		pr.redo = redo;
+		pr.late = late;
 		pr.echo_time = time;
 		pr.echo_rx_ms = now;
 		if (echo)
@@ -2605,24 +2613,13 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 			if (sample >= 0 && sample < 10000)
 			{
 				pr.rtt = pr.rtt ? pr.rtt + (sample - pr.rtt) * 0.1f : sample;
-				if (sample > pr.rtt_slow[0])
-					pr.rtt_slow[1] = std::exchange(pr.rtt_slow[0], sample);
-				else
-					pr.rtt_slow[1] = std::max(pr.rtt_slow[1], sample);
-				if (++pr.rtt_samples == LOAD_FRAMES)
-				{
-					pr.rtt_slow_before = pr.rtt_slow[1];
-					pr.rtt_slow[0] = pr.rtt_slow[1] = 0;
-					pr.rtt_samples = 0;
-				}
 			}
 		}
 	}
-	if (m_trip_log)
-		std::fprintf(m_trip_log, "%u,%d,%d,%.0f\n", now, sender + 1, int(s32(now - time)), sample);
 	if (acked <= m_known[m_me])
 		pr.acked = std::max(pr.acked, acked);
 
+	const s64 known = m_known[sender];
 	for (int i = 0; i < count; i++)
 	{
 		const s64 f = first + i;
@@ -2636,6 +2633,28 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 		if (f <= m_cur && f > m_floor && m_used[sender][f % INPUT_RING] != word)
 			m_rollback_to = std::min(m_rollback_to, f);
 	}
+
+	// how late the oldest of the new inputs comes: its packet's frames on the way, and one for each input
+	// past the first, whose packet was lost or overtaken. A packet sent again while they wait brings none,
+	// and says nothing of the way
+	const bool brought = m_known[sender] > known;
+	const s32 came = s32(m_cur - frame) + s32(m_known[sender] - known - 1);
+	if (brought)
+	{
+		if (!pr.late_samples)
+			pr.late_slow[0] = pr.late_slow[1] = came;
+		else if (came > pr.late_slow[0])
+			pr.late_slow[1] = std::exchange(pr.late_slow[0], came);
+		else
+			pr.late_slow[1] = std::max(pr.late_slow[1], came);
+		if (++pr.late_samples == LOAD_FRAMES)
+		{
+			pr.late_before = pr.late_slow[1];
+			pr.late_samples = 0;
+		}
+	}
+	if (m_trip_log)
+		std::fprintf(m_trip_log, "%u,%d,%d,%d,%d,%.0f\n", now, sender + 1, int(brought), int(s32(now - time)), int(came), sample);
 	if (sender == 0 && m_stage == stage::STARTED)
 		m_stage = stage::PLAYING;
 }
