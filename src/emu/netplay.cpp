@@ -417,7 +417,8 @@ private:
 		u32 echo_time = 0;          // sent back, for the round trip
 		u32 echo_rx_ms = 0;
 		float rtt = 0;
-		float rtt_max[2] = { };     // the worst of the last samples, and of those before
+		float rtt_slow[2] = { };    // the two slowest of the last samples
+		float rtt_slow_before = 0;  // the second slowest of the samples before
 		size_t rtt_samples = 0;
 		float advantage = 0;        // frames I am ahead of them
 		float their_advantage = 0;  // as they see it
@@ -936,8 +937,9 @@ void netplay_session::frame_inputs_port(ioport_port &port)
 }
 
 // frames of delay for every other player to redo at most what it can within a frame, and to have
-// our inputs before its window ends even when lost once; they take half the worst round trip of
-// the last LOAD_FRAMES to 2 x LOAD_FRAMES packets
+// our inputs before its window ends even when lost once. Their trip: the second slowest round trip of
+// the last LOAD_FRAMES to 2 x LOAD_FRAMES packets, all of its excess over the mean as if on the way
+// to them (a phone's sending stops for a while); a packet slow alone is left to the rollbacks
 float netplay_session::delay_need() const
 {
 	float need = 0;
@@ -946,7 +948,7 @@ float netplay_session::delay_need() const
 		const peer &pr = m_peers[p];
 		if (p == m_me || !pr.connected || !pr.rtt)
 			continue;
-		const float trip = std::max(pr.rtt_max[0], pr.rtt_max[1]) / 2 / m_frame_ms;
+		const float trip = (std::max(pr.rtt_slow[1], pr.rtt_slow_before) - pr.rtt / 2) / m_frame_ms;
 		need = std::max({ need, trip - pr.redo, trip + 1 - (WINDOW - 1) });
 	}
 	return need;
@@ -2592,10 +2594,14 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 			if (sample >= 0 && sample < 10000)
 			{
 				pr.rtt = pr.rtt ? pr.rtt + (sample - pr.rtt) * 0.1f : sample;
-				pr.rtt_max[0] = std::max(pr.rtt_max[0], sample);
+				if (sample > pr.rtt_slow[0])
+					pr.rtt_slow[1] = std::exchange(pr.rtt_slow[0], sample);
+				else
+					pr.rtt_slow[1] = std::max(pr.rtt_slow[1], sample);
 				if (++pr.rtt_samples == LOAD_FRAMES)
 				{
-					pr.rtt_max[1] = std::exchange(pr.rtt_max[0], 0.0f);
+					pr.rtt_slow_before = pr.rtt_slow[1];
+					pr.rtt_slow[0] = pr.rtt_slow[1] = 0;
 					pr.rtt_samples = 0;
 				}
 			}
