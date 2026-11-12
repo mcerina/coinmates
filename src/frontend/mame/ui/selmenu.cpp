@@ -465,7 +465,7 @@ bool menu_select_launch::netplay_selection::handle(event const *ev)
 			if (!join_target().empty())
 				launch(0, join_target());
 			else
-				ui().popup_time(3, "%s", _("Type the room code that the host sees, like K7Q-M3X"));
+				ui().popup_time(3, "%s", _("Type the room code that the host sees, like K7QM3XD"));
 		}
 		break;
 
@@ -520,8 +520,6 @@ std::string menu_select_launch::netplay_selection::shown() const
 	for (char c : m_room)
 		if (c != '-')
 			code += char(std::toupper(u8(c)));
-	if (code.size() > 3)
-		code.insert(3, 1, '-');
 	return code;
 }
 
@@ -532,7 +530,13 @@ void menu_select_launch::netplay_selection::launch(int port, std::string const &
 	options.set_value(OPTION_NETPLAY_HOST, port, OPTION_PRIORITY_CMDLINE);
 	options.set_value(OPTION_NETPLAY_JOIN, room, OPTION_PRIORITY_CMDLINE);
 	options.set_value(OPTION_NETPLAY_PLAYERS, 0, OPTION_PRIORITY_CMDLINE);
-	launch_system(ui(), m_driver, nullptr, nullptr, nullptr);
+
+	// online all the players need the same BIOS: the default one
+	s_bios bios;
+	if (!port && room.empty() && !ui().options().skip_bios_menu() && has_multiple_bios(m_driver, bios))
+		menu::stack_push<bios_selection>(ui(), target(), std::move(bios), m_driver, false);
+	else
+		launch_system(ui(), m_driver, nullptr, nullptr, nullptr);
 }
 
 //-------------------------------------------------

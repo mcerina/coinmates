@@ -597,8 +597,7 @@ bool menu_select_game::inkey_select(const event *menu_event)
 		media_auditor auditor(enumerator);
 		media_auditor::summary const summary = auditor.audit_media(AUDIT_VALIDATE_FAST);
 
-		// if everything looks good, choose how to play it; the default BIOS, which online all
-		// the players need the same
+		// if everything looks good, choose how to play it
 		if (audit_passed(summary))
 		{
 			select_netplay(*system->driver);

@@ -762,7 +762,8 @@ void device_scheduler::postload()
 	{
 		while (!m_quantum_list.empty())
 			m_quantum_allocator.reclaim(m_quantum_list.detach_head());
-		for (u32 i = 0; i != m_saved_quanta; i++)
+		// no more than the arrays hold, whatever a state from another machine says
+		for (u32 i = 0; i != std::min<u32>(m_saved_quanta, SAVED_QUANTA); i++)
 		{
 			quantum_slot &quant = *m_quantum_allocator.alloc();
 			quant.m_requested = m_saved_quantum_requested[i];

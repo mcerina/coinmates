@@ -466,6 +466,8 @@ int running_machine::run(bool quiet)
 		sound().ui_mute(true);
 		if (options().nvram_save() && !*options().netplay_join())
 			nvram_save();
+		if (m_rollback)
+			m_rollback->restore_settings();
 		m_configuration->save_settings();
 	}
 	catch (emu_fatalerror const &fatal)

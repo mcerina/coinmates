@@ -125,9 +125,10 @@ void menu_main::populate()
 
 	item_append(_("menu-main", "Input Settings"), 0, (void *)INPUT_OPTIONS);
 
-	if (ui().machine_info().has_dips())
+	// online everybody has the host's, which can't change
+	if (ui().machine_info().has_dips() && !machine().rollback())
 		item_append(_("menu-main", "DIP Switches"), 0, (void *)SETTINGS_DIP_SWITCHES);
-	if (ui().machine_info().has_configs())
+	if (ui().machine_info().has_configs() && !machine().rollback())
 		item_append(_("menu-main", "Machine Configuration"), 0, (void *)SETTINGS_DRIVER_CONFIG);
 
 	item_append(_("menu-main", "Bookkeeping Info"), 0, (void *)BOOKKEEPING);

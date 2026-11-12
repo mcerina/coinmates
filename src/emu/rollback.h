@@ -54,6 +54,8 @@ public:
 
 	// for the menu, e.g. the room code to give to whoever joins again; empty if nothing to say
 	virtual std::string status() const { return std::string(); }
+	// before the configuration is saved: the DIP switches of this player, not the host's
+	virtual void restore_settings() { }
 
 	virtual void frame_inputs_begin() = 0;                 // ioport frame_update start (end of the current frame)
 	virtual void frame_inputs_port(ioport_port &port) = 0; // per port, after the OS sample
@@ -83,7 +85,12 @@ protected:
 	slot &slot_for(s64 frame) { return m_slots[frame % m_slots.size()]; }
 	bool slot_valid(s64 frame) { const slot &s = slot_for(frame); return s.frame == frame && s.valid; }
 	bool save_slot(s64 frame);
-	void load_state(const std::vector<u8> &state) { m_machine.save().read_buffer(state.data(), state.size()); }
+	// a state that doesn't fit this machine, which only a broken or hostile host sends: nothing to play on
+	void load_state(const std::vector<u8> &state)
+	{
+		if (m_machine.save().read_buffer(state.data(), state.size()) != STATERR_NONE)
+			throw emu_fatalerror("Netplay: the host's state doesn't fit this machine");
+	}
 	void compute_hash_skip(std::string_view exclude, bool skip_samples);
 	u64 state_hash(const std::vector<u8> &state) const;
 

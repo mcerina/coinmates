@@ -194,7 +194,7 @@ void netplay_meet::ask_tracker(server &t)
 {
 	if (!m_asked_ms)
 		m_asked_ms = m_now;
-	t.transaction = u32(m_rng());
+	t.transaction = u32(m_rng()) | 1;
 	if (!t.connected || m_now - t.connected_ms >= CONNECTION_MS)
 	{
 		u8 request[16];
@@ -264,7 +264,7 @@ bool netplay_meet::handle(const udp::endpoint &from, const u8 *data, size_t size
 	{
 		if (t.endpoint != from)
 			continue;
-		if (size < 8 || get_u32be(data + 4) != t.transaction)
+		if (size < 8 || !t.transaction || get_u32be(data + 4) != t.transaction)
 			return true;
 		t.transaction = 0;
 		const u32 action = get_u32be(data);
