@@ -425,6 +425,7 @@ private:
 		// the second slowest of those before
 		s32 late_slow[2] = { }, late_before = 0;
 		size_t late_samples = 0;
+		bool late_full = false;     // a whole block measured
 		int late = 0;               // the same of our packets, as they tell
 		float advantage = 0;        // frames I am ahead of them
 		float their_advantage = 0;  // as they see it
@@ -951,7 +952,8 @@ void netplay_session::frame_inputs_port(ioport_port &port)
 // our inputs before its window ends even when lost once. Their trip: how many frames after they were
 // sent the second slowest of our last LOAD_FRAMES to 2 x LOAD_FRAMES new inputs came, as they measure
 // it on the frames, as WebRTC's jitter buffer does on the media timestamps: a phone stops sending for
-// a while, one way only. An input slow alone is left to the rollbacks
+// a while, one way only. An input slow alone is left to the rollbacks. A frame more, a choice: on a
+// phone, as few stalls as by the round trip, with less delay and half its peaks
 float netplay_session::delay_need() const
 {
 	float need = 0;
@@ -960,7 +962,7 @@ float netplay_session::delay_need() const
 		const peer &pr = m_peers[p];
 		if (p == m_me || !pr.connected)
 			continue;
-		const float trip = float(pr.late);
+		const float trip = float(pr.late) + 1;
 		need = std::max({ need, trip - pr.redo, trip + 1 - (WINDOW - 1) });
 	}
 	return need;
@@ -2553,7 +2555,10 @@ void netplay_session::send_inputs()
 		out.put<u16>(u16(std::min<u32>(now - pr.echo_rx_ms, 65535)));
 		out.put<s16>(s16(std::clamp(pr.advantage * 16, -32000.0f, 32000.0f)));
 		out.put<u8>(u8(m_redo));
-		out.put<u8>(u8(std::clamp(std::max(pr.late_slow[1], pr.late_before), 0, 255)));
+		// before the delay grows, we stop a window ahead of their inputs and see them come no later than
+		// that: at first, half the round trip, and the frame that a sample adds to it on average
+		const s32 late = std::max(pr.late_slow[1], pr.late_full ? pr.late_before : s32(pr.rtt / 2 / m_frame_ms) + 1);
+		out.put<u8>(u8(std::clamp(late, 0, 255)));
 		out.put<u16>(u16(m_notes[p].size()));
 		out.put<u32>(m_roster_version);
 		out.put<s32>(s32(first));
@@ -2651,6 +2656,7 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 		{
 			pr.late_before = pr.late_slow[1];
 			pr.late_samples = 0;
+			pr.late_full = true;
 		}
 	}
 	if (m_trip_log)
