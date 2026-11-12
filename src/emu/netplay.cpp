@@ -680,6 +680,7 @@ private:
 	u64 m_desyncs = 0, m_resyncs = 0, m_hash_compared = 0, m_slow_frames = 0;
 	osd_ticks_t m_stall_ticks = 0;
 	int m_delay_max = MIN_DELAY, m_delay_changes = 0;
+	u64 m_delay_histogram[32] = { };
 	u64 m_depth_histogram[64] = { };
 	double m_rollback_ms_total = 0, m_rollback_ms_max = 0;
 	osd_ticks_t m_session_start = 0;
@@ -977,6 +978,7 @@ void netplay_session::publish_inputs(s64 frame)
 		m_input[m_me][(frame + m_delay) % INPUT_RING] = m_sample;
 	}
 	m_known[m_me] = frame + m_delay;
+	m_delay_histogram[std::min<size_t>(m_delay, std::size(m_delay_histogram) - 1)]++;
 }
 
 // the frames this machine can redo within one: from the time a frame takes besides waiting and
@@ -2944,6 +2946,9 @@ void netplay_session::write_log()
 			(unsigned long long)(m_stall_ticks * 1000 / osd_ticks_per_second()), (unsigned long long)m_slow_frames, m_delay_changes, (unsigned long long)m_tx_bytes, (unsigned long long)m_rx_bytes, m_send_failed, m_silence_max_ms, m_welcome_ms);
 	for (size_t i = 0; i < std::size(m_depth_histogram); i++)
 		std::fprintf(f, "%s%llu", i ? "," : "", (unsigned long long)m_depth_histogram[i]);
+	std::fprintf(f, "],\"delay\":[");
+	for (size_t i = 0; i < std::size(m_delay_histogram); i++)
+		std::fprintf(f, "%s%llu", i ? "," : "", (unsigned long long)m_delay_histogram[i]);
 	std::fprintf(f, "]}\n");
 	std::fclose(f);
 }
