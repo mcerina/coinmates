@@ -14,14 +14,16 @@ on:
 permissions:
   contents: read
 
-# What we add to MAME's options, everywhere (as in the flatpak manifest):
-# - SUBTARGET, SOURCES: only the drivers of the co-op games
-# - USE_QTDEBUG=0: no debugger, which would stop the game for one player only
-# - ARCHOPTS=-fsanitize=bounds, trapping: an array index out of bounds stops the game instead of
-#   writing in memory (a joiner loads the host's state, and drivers use its values as indices); on
-#   Windows and macOS also the checks of the C++ library, and on Windows the stack protector and
-#   FORTIFY: on Linux these come with the SDK's CFLAGS, on macOS the last two with Apple's tools
-# - NEW_GIT_VERSION: the Coinmates version, which all the players in a room must share
+# Not as MAME's CI: the actions and the Linux image by their hash, not by a branch or a tag that
+# whoever controls them can move, as the release job can write to the repository. Updated by hand.
+
+# What we add to MAME's options, everywhere, as in the flatpak manifest. SUBTARGET and SOURCES build
+# only the drivers of the co-op games. USE_QTDEBUG=0 leaves out the debugger, which would stop the
+# game for one player only. -fsanitize=bounds, trapping, stops the game at an array index out of
+# bounds instead of writing in memory: a joiner loads the host's state, and drivers use its values as
+# indices. On Windows and macOS also the checks of the C++ library, and on Windows the stack protector
+# and FORTIFY, which on Linux come with the SDK's CFLAGS and on macOS with Apple's tools.
+# NEW_GIT_VERSION is the Coinmates version, which all the players in a room must share.
 env:
   MAKEOPTS: SUBTARGET=coinmates USE_QTDEBUG=0
   ARCH: -fsanitize=bounds -fsanitize-undefined-trap-on-error
@@ -35,17 +37,19 @@ jobs:
   linux:
     runs-on: ubuntu-latest
     container:
-      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11
+      image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11@sha256:b0a8a2acb9e420dd0e3e083ff552bea5a817e17e41532f1d2287ff49ef9aae0e
       options: --privileged
     steps:
-    - uses: actions/checkout@main
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
     # the action keeps flatpak-builder's state and ccache between runs (its default cache key)
-    - uses: flatpak/flatpak-github-actions/flatpak-builder@v6
+    - uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
       with:
         manifest-path: netplay/flatpak/io.github.mcerina.Coinmates.yml
         bundle: coinmates.flatpak
         upload-artifact: false
-    - uses: actions/upload-artifact@main
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: linux
         path: coinmates.flatpak
@@ -60,8 +64,10 @@ jobs:
       with:
         msystem: UCRT64
         install: git make zip mingw-w64-ucrt-x86_64-gcc mingw-w64-ucrt-x86_64-python mingw-w64-ucrt-x86_64-lld mingw-w64-ucrt-x86_64-llvm mingw-w64-ucrt-x86_64-sdl3 mingw-w64-ucrt-x86_64-ccache
-    - uses: actions/checkout@main
-    - uses: actions/cache/restore@v6
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: .ccache
         key: ccache-windows-${{ github.sha }}
@@ -74,19 +80,13 @@ jobs:
         OVERRIDE_CC: ccache gcc
         OVERRIDE_CXX: ccache g++
       run: make -j4 $MAKEOPTS USE_SDL3=1 ARCHOPTS="$ARCH -D_GLIBCXX_ASSERTIONS -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fuse-ld=lld" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,) NEW_GIT_VERSION=$(netplay/version.sh)
-    - uses: actions/cache/save@v6
+    - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       if: always()
       with:
         path: .ccache
         key: ccache-windows-${{ github.sha }}
     - name: Validate
-      # as MAME's CI. Allowed: the errors of building part of MAME, clones whose parent is in a file
-      # that sources.txt leaves out (in segas16a.cpp and gaelco.cpp, of no game in games.txt)
-      run: |
-        ./coinmates -validate > validate.txt || true
-        cat validate.txt
-        n=$(grep -c 'clone of nonexistent driver' validate.txt || true)
-        ! grep 'in total' validate.txt | grep -qv "($n errors"
+      run: netplay/validate.sh ./coinmates build
     - name: Package
       # unzipped anywhere, it keeps its settings next to it
       run: |
@@ -94,11 +94,13 @@ jobs:
         mkdir -p $d/cfg
         cp coinmates.exe netplay/windows/coinmates.ini netplay/games.txt COPYING $d/
         cp 3rdparty/core-math/LICENSE $d/CORE-MATH-LICENSE
+        cp 3rdparty/musl/COPYRIGHT $d/MUSL-COPYRIGHT
+        cp netplay/flatpak/EMUDECK-LICENSE $d/
         cp netplay/flatpak/default.cfg $d/cfg/
         printf 'last_used_filter Available\n' > $d/ui.ini
         ldd coinmates.exe | awk '$3 ~ /ucrt64/ { print $3 }' | xargs -r cp -t $d/
         zip -r coinmates-windows.zip $d
-    - uses: actions/upload-artifact@main
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: windows
         path: coinmates-windows.zip
@@ -113,7 +115,9 @@ jobs:
         - { runner: macos-15-intel, zip: coinmates-macos-intel }
     runs-on: ${{ matrix.runner }}
     steps:
-    - uses: actions/checkout@main
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
     # as MAME's CI (python3); librsvg for the icon
     - run: brew install python3 librsvg ccache
     - name: SDL3
@@ -125,7 +129,7 @@ jobs:
         hdiutil attach -quiet -mountpoint sdlvol sdl.dmg
         mkdir sdl && cp -R sdlvol/SDL3.xcframework/macos-arm64_x86_64/SDL3.framework sdl/
         hdiutil detach -quiet sdlvol
-    - uses: actions/cache/restore@v6
+    - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
         path: .ccache
         key: ccache-${{ matrix.zip }}-${{ github.sha }}
@@ -137,21 +141,16 @@ jobs:
         OVERRIDE_CC: ccache clang
         OVERRIDE_CXX: ccache clang++
       run: make -j$(sysctl -n hw.ncpu) SDL_FRAMEWORK_PATH=$PWD/sdl $MAKEOPTS ARCHOPTS="$ARCH -mmacosx-version-min=11.0 -D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd, -) NEW_GIT_VERSION=$(netplay/version.sh)
-    - uses: actions/cache/save@v6
+    - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       if: always()
       with:
         path: .ccache
         key: ccache-${{ matrix.zip }}-${{ github.sha }}
     - name: Validate
-      # as MAME's CI. Allowed: the errors of building part of MAME, clones whose parent is in a file
-      # that sources.txt leaves out (in segas16a.cpp and gaelco.cpp, of no game in games.txt)
-      run: |
-        ./coinmates -validate > validate.txt || true
-        cat validate.txt
-        n=$(grep -c 'clone of nonexistent driver' validate.txt || true)
-        ! grep 'in total' validate.txt | grep -qv "($n errors"
+      run: netplay/validate.sh ./coinmates build
     - name: Package
-      # an app with its libraries; not signed by a developer: the first time, right click, Open
+      # an app with its libraries; not signed by a developer: the first time, Open Anyway in
+      # Privacy & Security, as the README says
       run: |
         c=Coinmates.app/Contents
         mkdir -p $c/MacOS $c/Resources $c/Frameworks icon.iconset
@@ -161,6 +160,8 @@ jobs:
         plutil -replace CFBundleVersion -string "$(netplay/version.sh)" $c/Info.plist
         cp netplay/flatpak/default.cfg netplay/games.txt COPYING $c/Resources/
         cp 3rdparty/core-math/LICENSE $c/Resources/CORE-MATH-LICENSE
+        cp 3rdparty/musl/COPYRIGHT $c/Resources/MUSL-COPYRIGHT
+        cp netplay/flatpak/EMUDECK-LICENSE $c/Resources/
         icon() { rsvg-convert -w $1 -h $1 netplay/flatpak/io.github.mcerina.Coinmates.svg -o $2; }
         for s in 16 32 128 256 512; do
           icon $s icon.iconset/icon_${s}x${s}.png
@@ -170,11 +171,11 @@ jobs:
         cp -R sdl/SDL3.framework $c/Frameworks/
         install_name_tool -rpath $PWD/sdl @executable_path/../Frameworks $c/MacOS/coinmates
         for f in $c/MacOS/coinmates $c/Frameworks/SDL3.framework/SDL3; do
-          ! otool -l $f | awk '$1 == "minos" && $2 + 0 > 11' | grep -q .
+          if otool -l $f | awk '$1 == "minos" && $2 + 0 > 11' | grep -q .; then echo "$f needs a macOS after 11"; exit 1; fi
         done
         codesign --force --deep -s - Coinmates.app
         ditto -c -k --keepParent Coinmates.app ${{ matrix.zip }}.zip
-    - uses: actions/upload-artifact@main
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: ${{ matrix.zip }}
         path: ${{ matrix.zip }}.zip
@@ -186,10 +187,11 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@main
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       with:
         path: src
-    - uses: actions/download-artifact@v8
+        persist-credentials: false
+    - uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8.0.2
       with:
         merge-multiple: true
     - name: Steam artwork

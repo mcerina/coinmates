@@ -1108,7 +1108,7 @@ void spu_device::device_reset()
 
 // a voice's position is saved as the start of its block and an index in it; a
 // block invalidated and not updated yet then comes back decoded from the RAM of
-// the moment (no voice is ever on one at a frame end in the sets tested, and the
+// the moment (no voice is ever on one at a frame end in the games of Coinmates, and the
 // desync check would catch it)
 void spu_device::save_cache_pointer(const cache_pointer &cp, uint32_t &start, uint32_t &index)
 {

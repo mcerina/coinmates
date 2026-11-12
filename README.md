@@ -20,7 +20,7 @@ flatpak install --user ~/Downloads/coinmates.flatpak
 
 Coinmates is then in your applications menu. On the Steam Deck, to have it in Game Mode, add it to Steam while still in Desktop Mode: Steam → *Games* → *Add a Non-Steam Game to My Library…* → tick **Coinmates** → *Add Selected Programs*. To update, install the new release the same way; to remove it, `flatpak uninstall io.github.mcerina.Coinmates`.
 
-**Windows.** Download [coinmates-windows.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-windows.zip), unzip it where you like, and open `coinmates.exe` in the `Coinmates` folder. Windows doesn't know who made it, so the first time it says *Windows protected your PC*: *More info* → *Run anyway*. To update, unzip the new release over the old folder: your settings stay. To remove it, delete the folder.
+**Windows.** Download [coinmates-windows.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-windows.zip), unzip it where you like, and open `coinmates.exe` in the `Coinmates` folder. Windows doesn't know who made it, so the first time it says *Windows protected your PC*: *More info* → *Run anyway*. To update, unzip the new release over the old folder: each game's settings stay, while the controls set for all games, `ui.ini` and `coinmates.ini` go back to the release's. To remove it, delete the folder.
 
 **Mac.** Download [coinmates-macos.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-macos.zip) for Apple silicon (M1 or newer), or [coinmates-macos-intel.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-macos-intel.zip) for an Intel Mac (Apple menu → *About This Mac* says which), open it, and drag **Coinmates** to Applications. It needs macOS 11 Big Sur or newer. It isn't signed by Apple, so the first time macOS refuses to open it: System Settings → *Privacy & Security* → *Open Anyway*. To update, replace it with the new one; to remove it, drag it to the Trash.
 
@@ -44,7 +44,7 @@ Every player needs **the same ROMs** for the game: the sets of MAME 0.289. When 
 
 | System | Command |
 |---|---|
-| Linux, Steam Deck | `flatpak run --command=coinmates io.github.mcerina.Coinmates -rompath ~/Emulation/roms/arcade -verifyroms <game>` |
+| Linux, Steam Deck | `flatpak run io.github.mcerina.Coinmates -verifyroms <game>` |
 | Windows | in the `Coinmates` folder: `coinmates.exe -verifyroms <game>` |
 | Mac | `/Applications/Coinmates.app/Contents/MacOS/launch -verifyroms <game>` |
 
@@ -97,7 +97,7 @@ Finding the room takes a few seconds, without any server of ours: the players fi
 
 When a player leaves, the others play on: that player's character stands still, and the screen says `Player 2 left`. The place stays free. If the host leaves, the game ends for everybody.
 
-- **You lost the connection**: Coinmates notices in about 10 seconds, and joins again by itself: the screen says `Lost the connection: joining room K7Q-M3X again`.
+- **You lost the connection**: Coinmates notices in about 10 seconds, and joins again by itself: the screen says `Lost the connection: joining room K7QM3XD again`.
 - **You quit, or Coinmates closed**: open it again, pick the same game, and *Join Online* with the same room code.
 - **Somebody new** can take a free place the same way.
 
@@ -107,7 +107,7 @@ Joining a game already going takes a few seconds (`catching up with the game`), 
 
 ### Controls
 
-Everybody plays with the **player 1 controls**, whichever player they are in the game: coin and start go to their own place. Any controller works, on every system; the names below are those of an Xbox-style controller.
+Everybody plays with the **player 1 controls**, whichever player they are in the game: coin and start go to their own place. The controls are EmuDeck's, made for Linux and the Steam Deck: on Windows and Mac a controller may number its buttons otherwise, and then you set them in the menu, under *Input Settings*. The names below are those of an Xbox-style controller.
 
 | Action | Controller | Keyboard |
 |---|---|---|
@@ -125,7 +125,7 @@ Online, the menu doesn't pause the game: the others play on while your character
 
 ### Who can join
 
-Only who knows the room code: every packet is signed with a key made from it. Typing the host's address instead of the code works only from the same home network or through a VPN such as Tailscale (some mobile operators also give their customers `100.` addresses: others of the same operator could join that way).
+Only who knows the room code: every packet is signed with a key made from it. Typing the host's address instead of the code works only from the same local network (an address that differs from the host's only in the last number: on a hotel's or a campus's Wi-Fi, strangers too) or when both are on a VPN with `100.` addresses, such as Tailscale.
 
 When you join, the host's machine state is loaded on yours, and MAME isn't made to load states from people who want to harm you: **play with people you know**. On Linux and the Steam Deck, Coinmates runs in the flatpak sandbox: of your files, it sees only the `Emulation` folder and the SD cards and other drives, which it can't change, and `Documents/Coinmates` for the room logs.
 
@@ -144,6 +144,7 @@ When a game ends because of a problem, the reason shows up in red in the list of
 - `different ROM contents`: your ROMs for that game differ, see [ROMs](#roms).
 - `the game has already started, with every place taken`: wait for a place to be free, or for the next game.
 - `cannot connect to the other players`: you reached the host, but not one of the other players, for about 7 seconds. Use Tailscale between the two of you.
+- `this game's state is too big to join during it`: for a few games, join only before the host starts.
 
 **`lost the connection, and could not join again`**: the room is gone (the host left), or the connection is still down.
 
@@ -162,7 +163,7 @@ When a direct connection doesn't work:
 
 Pick the game, then **Report a Problem**: the browser opens a short form, with no account needed, already filled in with the game, the version, the system and the room log of the last online game with it (the last lines of each player, if it's long). Write what happened, and send it: the answers aren't public.
 
-Every online game writes a room log in `Documents/Coinmates`: who joined and left, the connections, the desyncs, and why it ended. Each player's log also has the other players' notes, so one report is enough for the whole room.
+Every online game writes a room log in `Documents/Coinmates` (on a Mac, `~/Library/Logs/Coinmates`): who joined and left, the connections, the desyncs, and why it ended. Each player's log also has the other players' notes, so one report is enough for the whole room.
 
 ## Artwork in Steam (optional)
 
@@ -192,4 +193,4 @@ How it works: [src/emu/rollback.cpp](src/emu/rollback.cpp) (saving, predicting a
 
 ## License
 
-Coinmates is a fork of MAME and keeps its license: the GNU General Public License, version 2 or later; see [COPYING](COPYING). The math functions come from [CORE-MATH](https://core-math.gitlabpages.inria.fr/), under the MIT license: see [3rdparty/core-math/LICENSE](3rdparty/core-math/LICENSE). MAME is a registered trademark of Gregory Ember; Coinmates is not affiliated with the MAME team. MAME's own README is at [github.com/mamedev/mame](https://github.com/mamedev/mame#readme).
+Coinmates is a fork of MAME and keeps its license: the GNU General Public License, version 2 or later; see [COPYING](COPYING). The math functions come from [CORE-MATH](https://core-math.gitlabpages.inria.fr/), and `fma` from [musl](https://musl.libc.org/), under the MIT license: see [3rdparty/core-math/LICENSE](3rdparty/core-math/LICENSE) and [3rdparty/musl/COPYRIGHT](3rdparty/musl/COPYRIGHT). The controller mapping is [EmuDeck](https://github.com/dragoonDorise/EmuDeck)'s, under the GNU General Public License version 3: see [netplay/flatpak/EMUDECK-LICENSE](netplay/flatpak/EMUDECK-LICENSE). MAME is a registered trademark of Gregory Ember; Coinmates is not affiliated with the MAME team. MAME's own README is at [github.com/mamedev/mame](https://github.com/mamedev/mame#readme).

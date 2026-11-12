@@ -1,5 +1,5 @@
 # Coinmates: co-op arcade games with friends, online. Based on MAME.
-# Built from the committed state of this repository by ../../../build-flatpak.sh
+# Built from the committed state of this repository: flatpak-builder, as the README says
 app-id: io.github.mcerina.Coinmates
 # As Flathub's org.mamedev.MAME, which EmuDeck installs on the Steam Deck: same runtime (already
 # on the Deck of whoever has EmuDeck) and same make options. What differs is commented.
@@ -7,8 +7,9 @@ runtime: org.kde.Platform
 runtime-version: '6.11'
 sdk: org.kde.Sdk
 command: launch
-# as Flathub's MAME, but its home and host access become only the folders below: whoever joins a
-# room loads the host's machine state, so Coinmates sees as little as it can
+# as Flathub's MAME, but its home and host access become only the folders below, and no Bluetooth
+# sockets (controllers come as devices): whoever joins a room loads the host's machine state, so
+# Coinmates sees as little as it can
 finish-args:
   - --share=network
   - --share=ipc
@@ -16,7 +17,6 @@ finish-args:
   - --socket=fallback-x11
   - --socket=pulseaudio
   - --device=all                       # controllers
-  - --allow=bluetooth
   - --filesystem=home/Emulation:ro     # the ROMs, where EmuDeck keeps them
   - --filesystem=/run/media:ro         # or on an SD card
   - --filesystem=xdg-documents/Coinmates:create   # the room logs
@@ -27,22 +27,23 @@ modules:
       no-debuginfo: true
       strip: true
     build-commands:
-      # as Flathub's MAME: CFLAGS, OSD, USE_SYSTEM_LIB_FLAC, LDOPTS. Ours:
-      # - SUBTARGET, SOURCES: only the drivers of the co-op games (a build of minutes, not hours)
-      # - USE_QTDEBUG=0: no debugger, which would stop the game for one player only
-      # - ARCHOPTS=-fsanitize=bounds, trapping: an array index out of bounds stops the game instead of
-      #   writing in memory. A joiner loads the host's state, and drivers use its values as indices.
-      #   The SDK's CFLAGS already add the rest (FORTIFY, _GLIBCXX_ASSERTIONS, stack protector, CET).
-      #   Cost: within 3% on the heaviest games
-      # - NEW_GIT_VERSION: the Coinmates version, which all the players in a room must share
-      # - no TOOLS, no SDL_INI_PATH: we ship only the emulator, and the launcher passes the options
+      # as Flathub's MAME: CFLAGS, OSD, USE_SYSTEM_LIB_FLAC, LDOPTS. Ours: SUBTARGET and SOURCES build
+      # only the drivers of the co-op games, in minutes, not hours. USE_QTDEBUG=0 leaves out the
+      # debugger, which would stop the game for one player only. -fsanitize=bounds, trapping, stops the
+      # game at an array index out of bounds instead of writing in memory: a joiner loads the host's
+      # state, and drivers use its values as indices; the SDK's CFLAGS add the rest, within 3% on the
+      # heaviest games. NEW_GIT_VERSION is the Coinmates version, which all the players in a room must
+      # share. No TOOLS nor SDL_INI_PATH: we ship only the emulator, and the launcher passes the options
       - make -j$FLATPAK_BUILDER_N_JOBS CFLAGS+=-Wno-error=restrict OSD=sdl3 USE_SYSTEM_LIB_FLAC=1 LDOPTS=-Wl,-s
         SUBTARGET=coinmates SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,)
         USE_QTDEBUG=0 ARCHOPTS="-fsanitize=bounds -fsanitize-undefined-trap-on-error" NEW_GIT_VERSION=$(netplay/version.sh)
+      - netplay/validate.sh ./coinmates build
       - install -Dm755 coinmates /app/bin/coinmates
       - install -Dm755 netplay/flatpak/launch /app/bin/launch
       - install -Dm644 netplay/flatpak/default.cfg /app/share/coinmates/default.cfg
       - install -Dm644 3rdparty/core-math/LICENSE /app/share/licenses/io.github.mcerina.Coinmates/CORE-MATH-LICENSE
+      - install -Dm644 3rdparty/musl/COPYRIGHT /app/share/licenses/io.github.mcerina.Coinmates/MUSL-COPYRIGHT
+      - install -Dm644 netplay/flatpak/EMUDECK-LICENSE /app/share/licenses/io.github.mcerina.Coinmates/EMUDECK-LICENSE
       # the entry in the menus, and in Steam's "Add a Non-Steam Game"
       - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.desktop /app/share/applications/io.github.mcerina.Coinmates.desktop
       # what Discover and Flathub show

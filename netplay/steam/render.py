@@ -1,11 +1,9 @@
 #!/usr/bin/env python3
 # Coinmates' icon and artwork, as the 90s arcades: pixel lettering with a metal gradient, outline and
 # extrusion, a sunburst, CRT scanlines, the players' colours. All rectangles: no fonts to ship.
-# Writes, with rsvg-convert and ImageMagick (the preview):
-# - ../flatpak/io.github.mcerina.Coinmates.svg, the icon (flatpak, macOS app, Steam: PNGs from it)
-# - ../../scripts/resources/windows/mame/coinmates.ico, the icon of the Windows exe
-# - coinmates-{cover,wide,hero,logo}.{svg,png} for Steam's library (README, "Steam Game Mode"),
-#   and preview.png, the three of them for the README
+# Writes, with rsvg-convert and ImageMagick for the preview, the icon (../flatpak, from which the
+# flatpak, the macOS app and Steam take PNGs), the Windows exe's icon (../../scripts/resources/windows),
+# the pictures for Steam's library (README, "Artwork in Steam") and preview.png of the three for the README
 import os, subprocess
 
 here = os.path.dirname(os.path.abspath(__file__))

@@ -5,7 +5,7 @@
 # configs/mame of github.com/dragoonDorise/EmuDeck): ROMs in Emulation/roms/arcade, then
 # Emulation/bios and Emulation/bios/mame, samples and artwork in Emulation/storage/mame;
 # Emulation is in the home or on an SD card. $NP_ROMS replaces the ROM paths. More options for the game
-# go in NP_ARGS, e.g. --env=NP_ARGS="-verbose".
+# go in NP_ARGS, e.g. --env=NP_ARGS="-verbose", or after the command.
 # Everybody plays with the player 1 controls, whatever seat they get.
 set -e
 for e in "$HOME/Emulation" /run/media/*/Emulation /run/media/*/*/Emulation; do
@@ -32,4 +32,4 @@ export SDL_ENABLE_SCREEN_KEYBOARD=0
 exec coinmates -rompath "$NP_ROMS" -samplepath "$EMU/storage/mame/samples" -artpath "$EMU/storage/mame/artwork" \
   -cfg_directory "$dir/cfg" -nvram_directory "$dir/nvram" -netplay_logs "$logs" \
   -joystickprovider sdljoy -joystick_deadzone 0.3 -joystick_saturation 0.85 -video opengl -samplerate 48000 \
-  $NP_ARGS
+  $NP_ARGS "$@"
