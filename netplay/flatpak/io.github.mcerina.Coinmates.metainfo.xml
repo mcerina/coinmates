@@ -9,7 +9,7 @@
     <name>Matteo Cerina</name>
   </developer>
   <metadata_license>CC0-1.0</metadata_license>
-  <project_license>GPL-2.0-or-later</project_license>
+  <project_license>GPL-2.0-or-later AND MIT AND GPL-3.0-only</project_license>
 
   <description>
     <p>
@@ -41,15 +41,15 @@
   <screenshots>
     <screenshot type="default">
       <caption>Pick a game among the ones you have</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.2.0/netplay/readme/1-list.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.3.0/netplay/readme/1-list.png</image>
     </screenshot>
     <screenshot>
       <caption>Play alone, host a room, or join one</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.2.0/netplay/readme/2-choices.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.3.0/netplay/readme/2-choices.png</image>
     </screenshot>
     <screenshot>
       <caption>Join with the room code a friend sent you</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.2.0/netplay/readme/3-join.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.3.0/netplay/readme/3-join.png</image>
     </screenshot>
   </screenshots>
 
@@ -83,6 +83,21 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.3.0" date="2026-11-12">
+      <description>
+        <p>The other players measure how late each player's inputs reach them, and the input delay follows that instead of the round trip. Every player needs this version: it can't play with 1.2.0.</p>
+        <ul>
+          <li>Room codes have 7 characters, without the hyphen: much harder to guess</li>
+          <li>When the connection is bad one way only, such as a phone losing packets as it sends, the game stalls far less</li>
+          <li>On a phone the input delay is lower and steadier</li>
+          <li>Playing alone, the BIOS can be chosen again; states saved alone with 1.2.0 don't load</li>
+          <li>Typing the host's address works only from the same local network or through Tailscale</li>
+          <li>Whoever joins keeps their own DIP switches for playing alone; online the menu doesn't show them</li>
+          <li>Joining a game already going is refused with a message, when its state is too big to catch up</li>
+          <li>On a Mac, the room logs are in Library/Logs/Coinmates</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.2.0" date="2026-11-12">
       <description>
         <p>The input delay adapts by itself, during the game, to the connection and to each player's computer: the setting to choose it is gone. Every player needs this version: it can't play with 1.1.0.</p>
