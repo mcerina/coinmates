@@ -22,8 +22,10 @@
     separated by commas):
       bot=<seed>        a deterministic bot plays instead of the local player
       frames=<n>        leave at frame n
-      log=<path>        write <path>.hash.csv and <path>.json
-      sim=<ms>:<ms>:<%> delay, jitter and loss of every packet sent
+      log=<path>        write <path>.hash.csv, <path>.trip.csv (each input packet: when, from whom, sent
+                        how long before by their clock, the round trip it gave) and <path>.json
+      sim=<ms>:<ms>:<%>[:<ms>:<ms>] delay, jitter and loss of every packet sent; and every that many ms,
+                        hold them that long and send them in order, as a phone's radio does
       cut=<frame>:<ms>  lose every packet for that long from that frame on, once
       fault=<frame>     corrupt one byte of RAM at this frame
       dump=<from>:<to>  write <path>.<frame>.state for these confirmed frames
@@ -667,8 +669,8 @@ private:
 	s64 m_test_fault = -1;
 	long long m_test_dump_from = 0, m_test_dump_to = -1;
 	std::string m_log_path;
-	FILE *m_hash_log = nullptr;
-	int m_sim_delay = 0, m_sim_jitter = 0, m_sim_loss = 0;
+	FILE *m_hash_log = nullptr, *m_trip_log = nullptr;
+	int m_sim_delay = 0, m_sim_jitter = 0, m_sim_loss = 0, m_sim_every = 0, m_sim_hold = 0;
 	s64 m_cut_frame = -1;
 	u32 m_cut_ms = 0, m_cut_until = 0;
 	u32 m_audio_delay_ms = AUDIO_DELAY_MS;
@@ -722,13 +724,16 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 			else if (k == "draw") m_resim_draw = std::stoi(v) != 0;
 			else if (k == "log") m_log_path = v;
 			else if (k == "dump") std::sscanf(v.c_str(), "%lld:%lld", &m_test_dump_from, &m_test_dump_to);
-			else if (k == "sim") std::sscanf(v.c_str(), "%d:%d:%d", &m_sim_delay, &m_sim_jitter, &m_sim_loss);
+			else if (k == "sim") std::sscanf(v.c_str(), "%d:%d:%d:%d:%d", &m_sim_delay, &m_sim_jitter, &m_sim_loss, &m_sim_every, &m_sim_hold);
 			else if (k == "cut" && !s_cut_done) { long long f; unsigned ms; if (std::sscanf(v.c_str(), "%lld:%u", &f, &ms) == 2) { m_cut_frame = f; m_cut_ms = ms; } }
 			else if (k == "port") m_test_port = u16(std::stoi(v));
 			else if (k == "audio") m_audio_delay_ms = u32(std::stoul(v));
 		}
 		if (!m_log_path.empty())
+		{
 			m_hash_log = std::fopen((m_log_path + ".hash.csv").c_str(), "w");
+			m_trip_log = std::fopen((m_log_path + ".trip.csv").c_str(), "w");
+		}
 	}
 
 	if (host)
@@ -831,6 +836,8 @@ netplay_session::~netplay_session()
 	write_log();
 	if (m_hash_log)
 		std::fclose(m_hash_log);
+	if (m_trip_log)
+		std::fclose(m_trip_log);
 	if (m_slowed)
 		m_machine.video().set_speed_factor(m_base_speed);
 	m_machine.sound().set_output_delay(attotime::zero);
@@ -1713,12 +1720,15 @@ void netplay_session::send(const udp::endpoint &to, const packet_writer &packet,
 	std::vector<u8> data = packet.tagged(key);
 	if (m_cut_until && s32(m_cut_until - now_ms()) > 0)
 		return;
-	if (m_sim_delay || m_sim_jitter || m_sim_loss)
+	if (m_sim_delay || m_sim_jitter || m_sim_loss || m_sim_every)
 	{
 		if (int(m_rng() % 100) < m_sim_loss)
 			return;
+		u32 time = now_ms();
+		if (m_sim_every && int(time % m_sim_every) < m_sim_hold)
+			time += m_sim_hold - time % m_sim_every;
 		const u32 extra = m_sim_jitter ? m_rng() % (m_sim_jitter + 1) : 0;
-		m_sim_queue.push_back({ now_ms() + m_sim_delay + extra, to, std::move(data) });
+		m_sim_queue.push_back({ time + m_sim_delay + extra, to, std::move(data) });
 		return;
 	}
 	asio::error_code ec;
@@ -2580,6 +2590,7 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 		pr.roster_acked = std::max(pr.roster_acked, roster);
 
 	const u32 now = now_ms();
+	float sample = -1;
 	if (frame >= pr.frame)
 	{
 		pr.frame = frame;
@@ -2590,7 +2601,7 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 		pr.echo_rx_ms = now;
 		if (echo)
 		{
-			const float sample = float(now - echo - hold);
+			sample = float(now - echo - hold);
 			if (sample >= 0 && sample < 10000)
 			{
 				pr.rtt = pr.rtt ? pr.rtt + (sample - pr.rtt) * 0.1f : sample;
@@ -2607,6 +2618,8 @@ void netplay_session::handle_input(int sender, packet_reader &in)
 			}
 		}
 	}
+	if (m_trip_log)
+		std::fprintf(m_trip_log, "%u,%d,%d,%.0f\n", now, sender + 1, int(s32(now - time)), sample);
 	if (acked <= m_known[m_me])
 		pr.acked = std::max(pr.acked, acked);
 
