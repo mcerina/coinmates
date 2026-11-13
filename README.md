@@ -173,7 +173,7 @@ Only if you added Coinmates to Steam, on any system: Steam has no pictures for t
 
 1. Download [coinmates-steam-art.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-steam-art.zip), and extract it.
 2. In Steam's *Library*, right click on Coinmates → *Properties…* → *Customization*: **Cover** `coinmates-cover.png`, **Background** `coinmates-background.png`, **Logo** `coinmates-logo.png`, **Wide Cover** `coinmates-wide-cover.png`.
-3. **Icon**, on Linux and the Steam Deck: in *Properties…*, the empty square next to Coinmates' name → `coinmates-icon.png`.
+3. **Icon**, on Linux and the Steam Deck: in *Properties…*, the empty square next to Coinmates' name → `coinmates-icon.png`. The square stays empty until Steam restarts: *Steam* → *Exit*, then open it again.
 
 ## Build from source
 
