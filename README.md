@@ -169,7 +169,7 @@ One report is enough for the whole room. The room logs are in `Documents/Coinmat
 
 Only if you added Coinmates to Steam, on any system: Steam has no pictures for the games added by hand, and shows a grey cover; on Linux and the Steam Deck, no icon either. To give Coinmates its own, once (on the Steam Deck, in Desktop Mode):
 
-![The cover, the wide cover, and the background and logo at the top of the game's page](netplay/steam/preview.png)
+![The background and logo at the top of the game's page, the cover and the wide cover](netplay/steam/preview.png)
 
 1. Download [coinmates-steam-art.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-steam-art.zip), and extract it.
 2. In Steam's *Library*, right click on Coinmates → *Properties…* → *Customization*: **Cover** `coinmates-cover.png`, **Background** `coinmates-background.png`, **Logo** `coinmates-logo.png`, **Wide Cover** `coinmates-wide-cover.png`.

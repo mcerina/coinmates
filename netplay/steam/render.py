@@ -3,7 +3,7 @@
 # extrusion, a sunburst, CRT scanlines, the players' colours. All rectangles: no fonts to ship.
 # Writes, with rsvg-convert and ImageMagick for the preview, the icon (../flatpak, from which the
 # flatpak, the macOS app and Steam take PNGs), the Windows exe's icon (../../scripts/resources/windows),
-# the pictures and the icon for Steam's library (README, "Artwork in Steam") and preview.png of three for the README
+# the pictures and the icon for Steam's library (README, "Artwork in Steam") and preview.png of them for the README
 import os, subprocess
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -239,8 +239,13 @@ for key, text in art.items():
     open(path + '.svg', 'w').write(text)
     subprocess.run(['rsvg-convert', path + '.svg', '-o', path + '.png'], check=True)
 p = lambda key: os.path.join(here, f'coinmates-{key}.png')
-subprocess.run(['magick', '-background', '#f6f6f8', p('cover'), '(', p('wide-cover'), p('background'), '-resize', '920x',
-                '-splice', '0x20', '-append', ')', '-splice', '20x0', '+append', '-resize', '760x', os.path.join(here, 'preview.png')], check=True)
+# as Steam's page: the background with the logo, then the covers; transparent, for GitHub's light and dark themes
+subprocess.run(['magick', '-size', '920x637', 'xc:none',
+                '(', p('background'), '-resize', '920x', ')', '-geometry', '+0+0', '-composite',
+                '(', p('logo'), '-resize', '420x', ')', '-geometry', '+30+159', '-composite',
+                '(', p('cover'), '-resize', 'x320', ')', '-geometry', '+0+317', '-composite',
+                '(', p('wide-cover'), '-resize', 'x320', ')', '-geometry', '+235+317', '-composite',
+                '-depth', '8', os.path.join(here, 'preview.png')], check=True)
 
 icon = os.path.join(here, '..', 'flatpak', 'io.github.mcerina.Coinmates.svg')
 open(icon, 'w').write('<!-- Coinmates: four arcade joysticks, one per player, in pixel art (written by ../steam/render.py) -->\n'
