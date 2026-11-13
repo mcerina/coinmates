@@ -83,7 +83,7 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
-    <release version="1.3.0" date="2026-11-12">
+    <release version="1.3.0" date="2026-11-13">
       <description>
         <p>The other players measure how late each player's inputs reach them, and the input delay follows that instead of the round trip. Every player needs this version: it can't play with 1.2.0.</p>
         <ul>
