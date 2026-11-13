@@ -26,6 +26,10 @@ modules:
     build-options:
       no-debuginfo: true
       strip: true
+      # ccache, with --ccache: the sandbox has none of the CI's environment
+      env:
+        CCACHE_MAXSIZE: 2G
+        CCACHE_SLOPPINESS: pch_defines,time_macros,include_file_mtime,include_file_ctime
     build-commands:
       # as Flathub's MAME: CFLAGS, OSD, USE_SYSTEM_LIB_FLAC, LDOPTS. Ours: SUBTARGET and SOURCES build
       # only the drivers of the co-op games, in minutes, not hours. USE_QTDEBUG=0 leaves out the
@@ -48,8 +52,7 @@ modules:
       - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.desktop /app/share/applications/io.github.mcerina.Coinmates.desktop
       # what Discover and Flathub show
       - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.metainfo.xml /app/share/metainfo/io.github.mcerina.Coinmates.metainfo.xml
-      - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.svg /app/share/icons/hicolor/scalable/apps/io.github.mcerina.Coinmates.svg
-      # Steam shows only PNG icons
+      # PNG only: Steam reads no SVG icons
       - for s in 16 24 32 64 128 256; do install -d /app/share/icons/hicolor/${s}x${s}/apps;
         rsvg-convert -w $s -h $s netplay/flatpak/io.github.mcerina.Coinmates.svg -o /app/share/icons/hicolor/${s}x${s}/apps/io.github.mcerina.Coinmates.png; done
     sources:
