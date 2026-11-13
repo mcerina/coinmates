@@ -57,6 +57,7 @@ jobs:
       with:
         manifest-path: netplay/flatpak/io.github.mcerina.Coinmates.yml
         bundle: coinmates.flatpak
+        branch: stable   # as Flathub
         upload-artifact: false
         restore-cache: false
         save-cache: false
@@ -79,7 +80,7 @@ jobs:
         KEY_ID: 3AA82B526BE789E56F4AE7BA84C4ADCB1D5C9DC2
       run: |
         gpg --batch --import <<< "$GPG_KEY"
-        flatpak build-sign repo io.github.mcerina.Coinmates master --gpg-sign=$KEY_ID
+        flatpak build-sign repo io.github.mcerina.Coinmates stable --gpg-sign=$KEY_ID
         # flatpak-builder made the appstream unsigned, and an unchanged one is not committed again
         rm -r repo/refs/heads/appstream repo/refs/heads/appstream2
         flatpak build-update-repo repo --gpg-sign=$KEY_ID --title=Coinmates

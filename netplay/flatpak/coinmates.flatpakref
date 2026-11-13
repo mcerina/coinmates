@@ -1,7 +1,7 @@
 [Flatpak Ref]
 Title=Coinmates
 Name=io.github.mcerina.Coinmates
-Branch=master
+Branch=stable
 Url=https://mcerina.github.io/coinmates/repo/
 SuggestRemoteName=coinmates
 Comment=Play co-op arcade games online

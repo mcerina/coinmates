@@ -1,7 +1,7 @@
 [Desktop Entry]
 Type=Application
 Name=Coinmates
-Comment=Co-op arcade games with friends, online
+Comment=Play co-op arcade games online
 Exec=launch
 Icon=io.github.mcerina.Coinmates
 StartupWMClass=io.github.mcerina.Coinmates
