@@ -12,23 +12,19 @@ Co-op arcade games with your friends, online. Coinmates is based on [MAME](https
 
 ## Install
 
-The downloads for Windows and Mac are in the [latest release](https://github.com/mcerina/coinmates/releases/latest). Everybody in a room needs **the same version**.
-
 **Linux and Steam Deck.** Download [coinmates.flatpakref](https://mcerina.github.io/coinmates/coinmates.flatpakref) (on the Steam Deck, in Desktop Mode) and open it from *Downloads*: Discover, or your system's software center, shows Coinmates: *Install*. Or in a terminal:
 
 ```sh
 flatpak install --from https://mcerina.github.io/coinmates/coinmates.flatpakref
 ```
 
-Coinmates is then in your applications menu, and its updates come with the others, in Discover's *Updates* (or `flatpak update`). If you installed `coinmates.flatpak` from an older release, remove it first: it doesn't update. On the Steam Deck, to have it in Game Mode, add it to Steam while still in Desktop Mode: Steam → *Games* → *Add a Non-Steam Game to My Library…* → tick **Coinmates** → *Add Selected Programs*. To remove it, Discover → *Installed*, or `flatpak uninstall io.github.mcerina.Coinmates`.
+Its updates come with the others, in Discover's *Updates* (or `flatpak update`). On the Steam Deck, to have it in Game Mode, add it to Steam while still in Desktop Mode: Steam → *Games* → *Add a Non-Steam Game to My Library…* → tick **Coinmates** → *Add Selected Programs*; then give it [its artwork](#artwork-in-steam-optional).
 
-**Windows.** Download [coinmates-windows.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-windows.zip), unzip it where you like, and open `coinmates.exe` in the `Coinmates` folder. Windows doesn't know who made it, so the first time it says *Windows protected your PC*: *More info* → *Run anyway*. To update, unzip the new release over the old folder: each game's settings stay, while the controls set for all games, `ui.ini` and `coinmates.ini` go back to the release's. To remove it, delete the folder.
+**Windows.** Download [coinmates-windows.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-windows.zip), unzip it where you like, and open `coinmates.exe` in the `Coinmates` folder. Windows doesn't know who made it, so the first time it says *Windows protected your PC*: *More info* → *Run anyway*. To update, unzip the new release over the old folder: each game's settings stay, while the controls set for all games, `ui.ini` and `coinmates.ini` go back to the release's.
 
-**Mac.** Download [coinmates-macos.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-macos.zip) for Apple silicon (M1 or newer), or [coinmates-macos-intel.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-macos-intel.zip) for an Intel Mac (Apple menu → *About This Mac* says which), open it, and drag **Coinmates** to Applications. It needs macOS 11 Big Sur or newer. It isn't signed by Apple, so the first time macOS refuses to open it: System Settings → *Privacy & Security* → *Open Anyway*. To update, replace it with the new one; to remove it, drag it to the Trash.
+**Mac.** Download [coinmates-macos.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-macos.zip) for Apple silicon (M1 or newer), or [coinmates-macos-intel.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-macos-intel.zip) for an Intel Mac (Apple menu → *About This Mac* says which), open it, and drag **Coinmates** to Applications. It needs macOS 11 Big Sur or newer. It isn't signed by Apple, so the first time macOS refuses to open it: System Settings → *Privacy & Security* → *Open Anyway*. To update, replace it with the new one.
 
 When you host for the first time, your system may ask whether Coinmates can accept connections (on Windows, the firewall): allow it.
-
-Any system can also add Coinmates to Steam as a non-Steam game, and give it [its artwork](#artwork-in-steam-optional).
 
 ## ROMs
 
@@ -87,7 +83,7 @@ When somebody joins, it counts them. With 3 or 4 players, the ones who joined al
 
 ![Two players: press Start](netplay/readme/5-host-ready.png)
 
-Everybody plays with the host's DIP switches, and from when the room opens they can't change: set them before, with *Play Alone* → menu → *DIP Switches*, then quit the game; they stay for that game. Some 4-player games, for example, have a switch for a 2- or 4-player cabinet: to play with 3 or 4, set it to 4. Other games, such as Cadillacs and Dinosaurs, keep their settings (difficulty, lives...) in the game's own service menu instead: open it in *Play Alone* with F2, or Select + R3 on a controller, change them as the game says on screen, and leave it as it says, so that the game saves them. Online everybody plays with the host's; the others' own settings stay as they were.
+Everybody plays with the host's DIP switches, and from when the room opens they can't change: set them before, with *Play Alone* → menu → *DIP Switches*, then quit the game; they stay for that game. Some 4-player games, for example, have a switch for a 2- or 4-player cabinet: to play with 3 or 4, set it to 4. Other games, such as Cadillacs and Dinosaurs, keep their settings (difficulty, lives...) in the game's own service menu instead: open it in *Play Alone* with F2, or Select + R3 on a controller, change them as the game says on screen, and leave it as it says, so that the game saves them.
 
 ### Joining
 
@@ -121,7 +117,7 @@ Everybody plays with the **player 1 controls**, whichever player they are in the
 | Menu | Select + R3 | Tab |
 | Quit the game | Select + Start | Esc |
 
-You can change them in the menu, under *Input Settings*. Select + R3 also presses the cabinet's Service button, as in EmuDeck: playing alone, some games then show their test screen.
+Select + R3 also presses the cabinet's Service button, as in EmuDeck: playing alone, some games then show their test screen.
 
 Online, the menu doesn't pause the game: the others play on while your character stands still. Pause, save states, reset, fast forward and the Service button are off.
 
