@@ -1,8 +1,8 @@
 name: Coinmates
 
 # The builds of a release: Linux (flatpak), Windows (a folder to unzip) and macOS (an app for Apple
-# silicon, one for Intel). A tag v* makes a draft release with them; a push to a ci/* branch only
-# builds, to try.
+# silicon, one for Intel). A tag v* makes a draft release with them, and publishes the flatpak in
+# Coinmates' flatpak repository on GitHub Pages; a push to a ci/* branch only builds, to try.
 # Each is built as MAME is there: Linux as Flathub's MAME, which EmuDeck installs (the manifest);
 # Windows and macOS as MAME's own CI (.github/workflows/ci-windows.yml, ci-macos.yml upstream).
 
@@ -39,9 +39,9 @@ jobs:
     container:
       image: ghcr.io/flathub-infra/flatpak-github-actions:kde-6.11@sha256:b0a8a2acb9e420dd0e3e083ff552bea5a817e17e41532f1d2287ff49ef9aae0e
       options: --privileged
-    # flatpak-builder keeps ccache in its state, saved as the others' (the action's own key, the
-    # manifest's hash, would keep the first state forever); with a CCACHE_DIR, as the others', it
-    # would keep it elsewhere, which this container loses
+    # flatpak-builder keeps ccache in its state directory, saved as the others' (the action's own key,
+    # the manifest's hash, would keep the first one forever): only ccache, as the rest never hits with
+    # a new commit. With a CCACHE_DIR, as the others', it would keep it elsewhere, which this container loses
     env:
       CCACHE_DIR: ''
     steps:
@@ -50,9 +50,9 @@ jobs:
         persist-credentials: false
     - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       with:
-        path: .flatpak-builder
-        key: flatpak-builder-${{ github.sha }}
-        restore-keys: flatpak-builder-
+        path: .flatpak-builder/ccache
+        key: flatpak-ccache-${{ github.sha }}
+        restore-keys: flatpak-ccache-
     - uses: flatpak/flatpak-github-actions/flatpak-builder@79327416609af08178ad73b352877e51450790b3 # v6.8
       with:
         manifest-path: netplay/flatpak/io.github.mcerina.Coinmates.yml
@@ -63,12 +63,35 @@ jobs:
     - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
       if: always()
       with:
-        path: .flatpak-builder
-        key: flatpak-builder-${{ github.sha }}
+        path: .flatpak-builder/ccache
+        key: flatpak-ccache-${{ github.sha }}
     - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
       with:
         name: linux
         path: coinmates.flatpak
+    # Installed from a repository, with coinmates.flatpakref, Discover shows the icon and brings the
+    # updates; from the bundle it does neither, as the bundle's remote has no appstream. The site has
+    # only this build: clients fetch just the files that changed, without its history.
+    - name: Flatpak repository
+      if: startsWith(github.ref, 'refs/tags/v')
+      env:
+        GPG_KEY: ${{ secrets.FLATPAK_GPG_KEY }}
+        KEY_ID: 3AA82B526BE789E56F4AE7BA84C4ADCB1D5C9DC2
+      run: |
+        gpg --batch --import <<< "$GPG_KEY"
+        flatpak build-sign repo io.github.mcerina.Coinmates master --gpg-sign=$KEY_ID
+        # flatpak-builder made the appstream unsigned, and an unchanged one is not committed again
+        rm -r repo/refs/heads/appstream repo/refs/heads/appstream2
+        flatpak build-update-repo repo --gpg-sign=$KEY_ID --title=Coinmates
+        mkdir site
+        mv repo site/
+        cp netplay/flatpak/coinmates.flatpakref site/
+        cp flatpak_app/export/share/icons/hicolor/128x128/apps/io.github.mcerina.Coinmates.png site/icon.png
+    - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
+      if: startsWith(github.ref, 'refs/tags/v')
+      with:
+        path: site
+        retention-days: 30   # the longest an approval can wait (pages job)
 
   windows:
     runs-on: windows-latest
@@ -216,5 +239,21 @@ jobs:
       env:
         GH_TOKEN: ${{ github.token }}
       run: gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "Coinmates ${GITHUB_REF_NAME#v}"
-        --notes "Built from $GITHUB_SHA." coinmates.flatpak coinmates-windows.zip coinmates-macos.zip coinmates-macos-intel.zip
+        --notes "Built from $GITHUB_SHA." coinmates-windows.zip coinmates-macos.zip coinmates-macos-intel.zip
         coinmates-steam-art.zip
+
+  # Discover would bring Linux the update at once: it waits for an approval in the environment
+  # github-pages, given when the draft release is published, or never for a dropped one
+  pages:
+    if: startsWith(github.ref, 'refs/tags/v')
+    needs: release
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+    - id: deploy
+      uses: actions/deploy-pages@368f82528645a54fb793d4d04e342629a3f51346 # v5.0.1

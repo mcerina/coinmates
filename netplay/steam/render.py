@@ -3,7 +3,7 @@
 # extrusion, a sunburst, CRT scanlines, the players' colours. All rectangles: no fonts to ship.
 # Writes, with rsvg-convert and ImageMagick for the preview, the icon (../flatpak, from which the
 # flatpak, the macOS app and Steam take PNGs), the Windows exe's icon (../../scripts/resources/windows),
-# the pictures for Steam's library (README, "Artwork in Steam") and preview.png of the three for the README
+# the pictures and the icon for Steam's library (README, "Artwork in Steam") and preview.png of three for the README
 import os, subprocess
 
 here = os.path.dirname(os.path.abspath(__file__))
@@ -255,6 +255,8 @@ images = []
 for png in pngs:
     images.append(open(png, 'rb').read())
     os.remove(png)
+# for Steam's shortcut, as Steam can't see the icons of the flatpaks installed for the whole system
+open(os.path.join(here, 'coinmates-icon.png'), 'wb').write(images[-1])
 ico = struct.pack('<HHH', 0, 1, len(images))
 offset = 6 + 16 * len(images)
 for size, data in zip((16, 24, 32, 48, 64, 128, 256), images):

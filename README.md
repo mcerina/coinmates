@@ -12,15 +12,15 @@ Co-op arcade games with your friends, online. Coinmates is based on [MAME](https
 
 ## Install
 
-The downloads are in the [latest release](https://github.com/mcerina/coinmates/releases/latest). Everybody in a room needs **the same version**.
+The downloads for Windows and Mac are in the [latest release](https://github.com/mcerina/coinmates/releases/latest). Everybody in a room needs **the same version**.
 
-**Linux and Steam Deck.** Download [coinmates.flatpak](https://github.com/mcerina/coinmates/releases/latest/download/coinmates.flatpak) (on the Steam Deck, in Desktop Mode) and open it from *Downloads*: Discover, or your system's software center, shows it: *Install*. Or in a terminal:
+**Linux and Steam Deck.** Download [coinmates.flatpakref](https://mcerina.github.io/coinmates/coinmates.flatpakref) (on the Steam Deck, in Desktop Mode) and open it from *Downloads*: Discover, or your system's software center, shows Coinmates: *Install*. Or in a terminal:
 
 ```sh
-flatpak install --user ~/Downloads/coinmates.flatpak
+flatpak install --from https://mcerina.github.io/coinmates/coinmates.flatpakref
 ```
 
-Coinmates is then in your applications menu. On the Steam Deck, to have it in Game Mode, add it to Steam while still in Desktop Mode: Steam → *Games* → *Add a Non-Steam Game to My Library…* → tick **Coinmates** → *Add Selected Programs*. To update, open the new release's file the same way; to remove it, Discover → *Installed*, or `flatpak uninstall io.github.mcerina.Coinmates`.
+Coinmates is then in your applications menu, and its updates come with the others, in Discover's *Updates* (or `flatpak update`). If you installed `coinmates.flatpak` from an older release, remove it first: it doesn't update. On the Steam Deck, to have it in Game Mode, add it to Steam while still in Desktop Mode: Steam → *Games* → *Add a Non-Steam Game to My Library…* → tick **Coinmates** → *Add Selected Programs*. To remove it, Discover → *Installed*, or `flatpak uninstall io.github.mcerina.Coinmates`.
 
 **Windows.** Download [coinmates-windows.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-windows.zip), unzip it where you like, and open `coinmates.exe` in the `Coinmates` folder. Windows doesn't know who made it, so the first time it says *Windows protected your PC*: *More info* → *Run anyway*. To update, unzip the new release over the old folder: each game's settings stay, while the controls set for all games, `ui.ini` and `coinmates.ini` go back to the release's. To remove it, delete the folder.
 
@@ -171,7 +171,7 @@ Every online game writes a room log in `Documents/Coinmates` (on a Mac, `~/Libra
 
 ## Artwork in Steam (optional)
 
-Only if you added Coinmates to Steam, on any system: Steam has no pictures for the games added by hand, and shows a grey cover. To give Coinmates its own, once (on the Steam Deck, in Desktop Mode):
+Only if you added Coinmates to Steam, on any system: Steam has no pictures for the games added by hand, and shows a grey cover; on Linux and the Steam Deck, no icon either. To give Coinmates its own, once (on the Steam Deck, in Desktop Mode):
 
 ![The artwork, the wide artwork, and the background and logo at the top of the game's page](netplay/steam/preview.png)
 
@@ -180,6 +180,7 @@ Only if you added Coinmates to Steam, on any system: Steam has no pictures for t
 3. **Artwork**: right click on Coinmates in the list on the left → *Manage* → *Set custom artwork* → `coinmates-artwork.png`.
 4. **Top of the page**: open Coinmates' page, right click on the empty band at the top → *Set Custom Background* → `coinmates-background.png`; right click there again → *Set Custom Logo* → `coinmates-logo.png`.
 5. **Wide artwork**, if Steam shows Coinmates in a wide box, as in *Recent Games*: right click on it → *Manage* → *Set custom artwork* → `coinmates-artwork-wide.png`.
+6. **Icon**, on Linux and the Steam Deck: right click on Coinmates → *Properties…* → the empty square next to its name → `coinmates-icon.png`.
 
 ## Build from source
 

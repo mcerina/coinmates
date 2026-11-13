@@ -50,7 +50,7 @@ modules:
       - install -Dm644 netplay/flatpak/EMUDECK-LICENSE /app/share/licenses/io.github.mcerina.Coinmates/EMUDECK-LICENSE
       # the entry in the menus, and in Steam's "Add a Non-Steam Game"
       - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.desktop /app/share/applications/io.github.mcerina.Coinmates.desktop
-      # what Discover and Flathub show
+      # what Discover shows
       - install -Dm644 netplay/flatpak/io.github.mcerina.Coinmates.metainfo.xml /app/share/metainfo/io.github.mcerina.Coinmates.metainfo.xml
       # PNG only: Steam reads no SVG icons
       - for s in 16 24 32 64 128 256; do install -d /app/share/icons/hicolor/${s}x${s}/apps;

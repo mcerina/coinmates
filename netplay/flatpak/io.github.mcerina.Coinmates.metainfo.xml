@@ -1,6 +1,6 @@
 <?xml version="1.0" encoding="UTF-8"?>
-<!-- What app stores (Flathub, Discover on the Steam Deck, GNOME Software) show about Coinmates.
-     At every release: a new <release> on top, and the screenshots' URLs pointing to its tag. -->
+<!-- What Discover and GNOME Software show about Coinmates, from its flatpak repository.
+     At every release: a new <release> on top. -->
 <component type="desktop-application">
   <id>io.github.mcerina.Coinmates</id>
   <name>Coinmates</name>
@@ -41,15 +41,15 @@
   <screenshots>
     <screenshot type="default">
       <caption>Pick a game among the ones you have</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.3.0/netplay/readme/1-list.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/netplay-rollback/netplay/readme/1-list.png</image>
     </screenshot>
     <screenshot>
       <caption>Play alone, host a room, or join one</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.3.0/netplay/readme/2-choices.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/netplay-rollback/netplay/readme/2-choices.png</image>
     </screenshot>
     <screenshot>
       <caption>Join with the room code a friend sent you</caption>
-      <image>https://raw.githubusercontent.com/mcerina/coinmates/v1.3.0/netplay/readme/3-join.png</image>
+      <image>https://raw.githubusercontent.com/mcerina/coinmates/netplay-rollback/netplay/readme/3-join.png</image>
     </screenshot>
   </screenshots>
 
