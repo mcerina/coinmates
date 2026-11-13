@@ -3036,7 +3036,7 @@ std::unique_ptr<rollback_session> create_netplay_session(running_machine &machin
 }
 
 
-// what was typed to join: a room code (any case, with or without the hyphen), or an address,
+// what was typed to join: a room code (any case, other characters dropped), or an address,
 // with the host's port if missing; empty if neither
 std::string rollback_session::join_target(std::string_view typed)
 {

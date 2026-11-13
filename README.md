@@ -2,6 +2,8 @@
 
 Co-op arcade games with your friends, online. Coinmates is based on [MAME](https://www.mamedev.org/) and lets 2 to 4 players beat up, shoot and race through the arcade co-op classics over the internet, without the input lag of classic netplay. It uses rollback, like modern fighting games: your inputs act at once, and when a friend's input arrives late, the last few frames are quietly redone. With friends far away, or a computer that can't redo many frames, the inputs wait a little, by themselves: just enough for the game not to slow down.
 
+![Three players in Cadillacs and Dinosaurs, each on their own screen](netplay/readme/three-players.webp)
+
 - **Linux, Steam Deck, Windows and Mac**, all the same, and playing together.
 - **No accounts, no servers to run**: the host gets a 7-character room code, and the others type it in.
 - **Whoever drops out can join again**, and the game goes on meanwhile.
@@ -66,7 +68,7 @@ Choose the game with A (or Enter), then:
 
 - **Play Alone**: the game, just you.
 - **Host Online**: you host. A room code appears: send it to your friends, in your usual chat.
-- **Join Online, Room Code**: type the code a friend sent you, then A or Enter (on the Steam Deck's keyboard, R2). Upper or lower case, with or without the dash: it doesn't matter.
+- **Join Online, Room Code**: type the code a friend sent you, then A or Enter (on the Steam Deck's keyboard, R2). Upper or lower case: it doesn't matter.
 - **Report a Problem**: see [below](#report-a-problem).
 
 Games for one player only, or with analog controls (wheels, dials, trackballs), have just *Play Alone* and *Report a Problem*.
