@@ -172,11 +172,8 @@ Only if you added Coinmates to Steam, on any system: Steam has no pictures for t
 ![The cover, the wide cover, and the background and logo at the top of the game's page](netplay/steam/preview.png)
 
 1. Download [coinmates-steam-art.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-steam-art.zip), and extract it.
-2. Open Steam, then the *Library*.
-3. **Cover**: right click on Coinmates in the list on the left → *Manage* → *Set custom artwork* → `coinmates-cover.png`.
-4. **Top of the page**: open Coinmates' page, right click on the empty band at the top → *Set Custom Background* → `coinmates-background.png`; right click there again → *Set Custom Logo* → `coinmates-logo.png`.
-5. **Wide Cover**, if Steam shows Coinmates in a wide box, as in *Recent Games*: right click on it → *Manage* → *Set custom artwork* → `coinmates-wide-cover.png`.
-6. **Icon**, on Linux and the Steam Deck: right click on Coinmates → *Properties…* → the empty square next to its name → `coinmates-icon.png`.
+2. In Steam's *Library*, right click on Coinmates → *Properties…* → *Customization*: **Cover** `coinmates-cover.png`, **Background** `coinmates-background.png`, **Logo** `coinmates-logo.png`, **Wide Cover** `coinmates-wide-cover.png`.
+3. **Icon**, on Linux and the Steam Deck: in *Properties…*, the empty square next to Coinmates' name → `coinmates-icon.png`.
 
 ## Build from source
 
