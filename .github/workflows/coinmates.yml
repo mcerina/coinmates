@@ -86,7 +86,8 @@ jobs:
         mkdir site
         mv repo site/
         cp netplay/flatpak/coinmates.flatpakref site/
-        cp flatpak_app/export/share/icons/hicolor/128x128/apps/io.github.mcerina.Coinmates.png site/icon.png
+        # Discover caches the flatpakref's icon by file name alone: a generic one shows another app's
+        cp flatpak_app/export/share/icons/hicolor/128x128/apps/io.github.mcerina.Coinmates.png site/
     - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9 # v5.0.0
       if: startsWith(github.ref, 'refs/tags/v')
       with:
