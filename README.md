@@ -50,7 +50,7 @@ Every player needs **the same ROMs** for the game: the sets of MAME 0.289. When 
 
 ### Which games
 
-The 256 co-op games checked online are listed in [netplay/games.txt](netplay/games.txt). Coinmates has only their MAME drivers. These also run other versions of the same games (other regions and revisions) and other games of the same arcade boards: they show up in the list and can be played online, but nobody checked them. If one of them shows `Repairing a desync`, [report it](#report-a-problem).
+The 256 co-op games checked online are in [netplay/games.txt](netplay/games.txt). Other versions of them, and other games of the same arcade boards, also show up and play online, but nobody checked them: if one shows `Repairing a desync`, [report it](#report-a-problem).
 
 ## Play
 
@@ -79,11 +79,11 @@ The screen stays black while you wait, with the game and the room code:
 
 ![The host waits](netplay/readme/4-host-waiting.png)
 
-When somebody joins, it counts them. With 3 or 4 players, the ones who joined also connect to each other: it takes a second or two, and the message says so meanwhile. Press **Start** when everybody is in, and the game begins for everyone. It also begins by itself when the room is full, that is when as many players as the game has have joined.
+The screen counts who joins. Press **Start** when everybody is in, or the game begins by itself when the room is full.
 
 ![Two players: press Start](netplay/readme/5-host-ready.png)
 
-Everybody plays with the host's DIP switches, and from when the room opens they can't change: set them before, with *Play Alone* → menu → *DIP Switches*, then quit the game; they stay for that game. Some 4-player games, for example, have a switch for a 2- or 4-player cabinet: to play with 3 or 4, set it to 4. Other games, such as Cadillacs and Dinosaurs, keep their settings (difficulty, lives...) in the game's own service menu instead: open it in *Play Alone* with F2, or Select + R3 on a controller, change them as the game says on screen, and leave it as it says, so that the game saves them.
+Online everybody plays with the host's settings, which can't change once the room is open: set them before, in *Play Alone*. Most games have them in the menu, under *DIP Switches* (some 4-player games need the 4-player cabinet, to play with 3 or 4); others, such as Cadillacs and Dinosaurs, in their own service menu: F2, or Select + R3, and leave it as the game says, so that it saves them.
 
 ### Joining
 
@@ -123,7 +123,7 @@ Online, the menu doesn't pause the game: the others play on while your character
 
 ### Who can join
 
-Only who knows the room code: every packet is signed with a key made from it. Typing the host's address instead of the code works only from the same local network (an address that differs from the host's only in the last number: on a hotel's or a campus's Wi-Fi, strangers too) or when both are on a VPN with `100.` addresses, such as Tailscale.
+Only who knows the room code: every packet is signed with a key made from it. Typing the host's address instead of the code works only on the same local network (on a hotel's Wi-Fi, strangers too) or when both are on Tailscale.
 
 When you join, the host's machine state is loaded on yours, and MAME isn't made to load states from people who want to harm you: **play with people you know**. On Linux and the Steam Deck, Coinmates runs in the flatpak sandbox: of your files, it sees only the `Emulation` folder and the SD cards and other drives, which it can't change, and `Documents/Coinmates` for the room logs.
 
@@ -134,21 +134,21 @@ When a game ends because of a problem, the reason shows up in red in the list of
 **Room not found after 25 seconds**: the message says where it stopped.
 - `cannot reach the trackers, where rooms are found`: check the internet connection.
 - `room not found: nobody is announcing this code`: check the code and the game, and that the host is still waiting.
-- `found the room, but the host does not answer`: a router or firewall is in the way. If the room log of one of you says `your router uses a different port for every destination (symmetric NAT)`, your routers can't connect directly, as with some mobile operators: use [Tailscale](#tailscale), or let the other player host.
+- `found the room, but the host does not answer`: a router or firewall is in the way: use [Tailscale](#tailscale), or let the other player host.
 
 **`refused by the host: …`** says why:
 - `different Coinmates version`: everybody updates to the latest release.
 - `different game`: the message says which game the host is playing.
 - `different ROM contents`: your ROMs for that game differ, see [ROMs](#roms).
 - `the room is full`, or `the game has already started, with every place taken`: wait for a place to be free, or for the next game.
-- `cannot connect to the other players`: you reached the host, but not one of the other players, for about 7 seconds. Use Tailscale between the two of you.
+- `cannot connect to the other players`: you reached the host but not another player: use Tailscale between the two of you.
 - `this game's state is too big to join during it`: for a few games, join only before the host starts.
 
-**`no answer from the host`**, joining by address: check the address, and that the host is waiting. From outside the host's network, an address works only with [Tailscale](#tailscale).
+**`no answer from the host`**, joining by address: check the address, and that the host is waiting.
 
 **`lost the connection, and could not join again`**: the room is gone (the host left), or the connection is still down.
 
-**The controls react a little late**: with a friend far away, or a computer that can't keep up, the inputs wait a few frames on purpose, so that the game doesn't slow down. The room log says how many, at the end of the game (`frames of input delay`).
+**The controls react a little late**: with a friend far away, or a computer that can't keep up, the inputs wait a few frames on purpose, so that the game doesn't slow down.
 
 **`Repairing a desync`**: the players drifted apart. It repairs itself with a small jump; if it happens often, report it.
 
@@ -163,7 +163,7 @@ When a direct connection doesn't work:
 
 Pick the game, then **Report a Problem**: the browser opens a short form, with no account needed, already filled in with the game, the version, the system and the room log of the last online game with it (the last lines of each player, if it's long). Write what happened, and send it: the answers aren't public. It works for a problem playing alone too, then without a log.
 
-Every online game writes a room log in `Documents/Coinmates` (on a Mac, `~/Library/Logs/Coinmates`): who joined and left, the connections, the desyncs, and why it ended, without anybody's address. Each player's log also has the other players' notes, so one report is enough for the whole room. Only the last 10 room logs are kept, of all games: report before playing much more.
+One report is enough for the whole room. The room logs are in `Documents/Coinmates` (on a Mac, `~/Library/Logs/Coinmates`), without anybody's address; only the last 10 are kept, so report soon.
 
 ## Artwork in Steam (optional)
 
