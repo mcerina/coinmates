@@ -245,10 +245,11 @@ jobs:
         coinmates-steam-art.zip src/netplay/flatpak/coinmates.flatpakref
 
   # Discover would bring Linux the update at once: it waits for an approval in the environment
-  # github-pages, given when the draft release is published, or never for a dropped one
+  # github-pages, given when the draft release is published, or never for a dropped one. Not after
+  # the release job, which a Mac runner can hold up for hours
   pages:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: release
+    needs: linux
     runs-on: ubuntu-latest
     permissions:
       pages: write
