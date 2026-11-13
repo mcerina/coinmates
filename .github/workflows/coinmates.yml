@@ -3,6 +3,8 @@ name: Coinmates
 # The builds of a release: Linux (flatpak), Windows (a folder to unzip) and macOS (an app for Apple
 # silicon, one for Intel). A tag v* makes a draft release with them, and publishes the flatpak in
 # Coinmates' flatpak repository on GitHub Pages; a push to a ci/* branch only builds, to try.
+# The default branch only builds too, to keep the caches for the tags: a tag sees only its own and
+# the default branch's, and GitHub drops a cache unused for 7 days, hence twice a week.
 # Each is built as MAME is there: Linux as Flathub's MAME, which EmuDeck installs (the manifest);
 # Windows and macOS as MAME's own CI (.github/workflows/ci-windows.yml, ci-macos.yml upstream).
 
@@ -10,6 +12,9 @@ on:
   push:
     tags: ['v*']
     branches: ['ci/**']
+  schedule:
+  - cron: '0 3 * * 1,4'
+  workflow_dispatch:
 
 permissions:
   contents: read
