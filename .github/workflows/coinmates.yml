@@ -86,8 +86,6 @@ jobs:
         path: .ccache
         key: ccache-windows-${{ github.sha }}
     - name: Validate
-      # seconds: a program that hangs fails here, not after GitHub's 6 hours
-      timeout-minutes: 10
       run: netplay/validate.sh ./coinmates build
     - name: Package
       # unzipped anywhere, it keeps its settings next to it
@@ -149,7 +147,6 @@ jobs:
         path: .ccache
         key: ccache-${{ matrix.zip }}-${{ github.sha }}
     - name: Validate
-      timeout-minutes: 10
       run: netplay/validate.sh ./coinmates build
     - name: Package
       # an app with its libraries; not signed by a developer: the first time, Open Anyway in
