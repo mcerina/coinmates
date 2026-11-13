@@ -3,7 +3,7 @@
 Co-op arcade games with your friends, online. Coinmates is based on [MAME](https://www.mamedev.org/) and lets 2 to 4 players beat up, shoot and race through the arcade co-op classics over the internet, without the input lag of classic netplay. It uses rollback, like modern fighting games: your inputs act at once, and when a friend's input arrives late, the last few frames are quietly redone. With friends far away, or a computer that can't redo many frames, the inputs wait a little, by themselves: just enough for the game not to slow down.
 
 - **Linux, Steam Deck, Windows and Mac**, all the same, and playing together.
-- **No accounts, no servers to run**: the host gets a 6-character room code, and the others type it in.
+- **No accounts, no servers to run**: the host gets a 7-character room code, and the others type it in.
 - **Whoever drops out can join again**, and the game goes on meanwhile.
 - **Players at home** find each other even without internet.
 - **A controller or the keyboard**, ready to play. Folders and controls are the ones [EmuDeck](https://www.emudeck.com/) uses for MAME: if you have EmuDeck, there is nothing to set up. It isn't needed.
@@ -12,13 +12,13 @@ Co-op arcade games with your friends, online. Coinmates is based on [MAME](https
 
 The downloads are in the [latest release](https://github.com/mcerina/coinmates/releases/latest). Everybody in a room needs **the same version**.
 
-**Linux and Steam Deck.** Download [coinmates.flatpak](https://github.com/mcerina/coinmates/releases/latest/download/coinmates.flatpak), then in a terminal (on the Steam Deck: Desktop Mode, then Konsole):
+**Linux and Steam Deck.** Download [coinmates.flatpak](https://github.com/mcerina/coinmates/releases/latest/download/coinmates.flatpak) (on the Steam Deck, in Desktop Mode) and open it from *Downloads*: Discover, or your system's software center, shows it: *Install*. Or in a terminal:
 
 ```sh
 flatpak install --user ~/Downloads/coinmates.flatpak
 ```
 
-Coinmates is then in your applications menu. On the Steam Deck, to have it in Game Mode, add it to Steam while still in Desktop Mode: Steam → *Games* → *Add a Non-Steam Game to My Library…* → tick **Coinmates** → *Add Selected Programs*. To update, install the new release the same way; to remove it, `flatpak uninstall io.github.mcerina.Coinmates`.
+Coinmates is then in your applications menu. On the Steam Deck, to have it in Game Mode, add it to Steam while still in Desktop Mode: Steam → *Games* → *Add a Non-Steam Game to My Library…* → tick **Coinmates** → *Add Selected Programs*. To update, open the new release's file the same way; to remove it, Discover → *Installed*, or `flatpak uninstall io.github.mcerina.Coinmates`.
 
 **Windows.** Download [coinmates-windows.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-windows.zip), unzip it where you like, and open `coinmates.exe` in the `Coinmates` folder. Windows doesn't know who made it, so the first time it says *Windows protected your PC*: *More info* → *Run anyway*. To update, unzip the new release over the old folder: each game's settings stay, while the controls set for all games, `ui.ini` and `coinmates.ini` go back to the release's. To remove it, delete the folder.
 
@@ -69,7 +69,7 @@ Choose the game with A (or Enter), then:
 - **Join Online, Room Code**: type the code a friend sent you, then A or Enter (on the Steam Deck's keyboard, R2). Upper or lower case, with or without the dash: it doesn't matter.
 - **Report a Problem**: see [below](#report-a-problem).
 
-Games for one player only, or with analog controls (wheels, dials, trackballs), have just *Play Alone*.
+Games for one player only, or with analog controls (wheels, dials, trackballs), have just *Play Alone* and *Report a Problem*.
 
 ![Typing a room code](netplay/readme/3-join.png)
 
@@ -142,9 +142,11 @@ When a game ends because of a problem, the reason shows up in red in the list of
 - `different Coinmates version`: everybody updates to the latest release.
 - `different game`: the message says which game the host is playing.
 - `different ROM contents`: your ROMs for that game differ, see [ROMs](#roms).
-- `the game has already started, with every place taken`: wait for a place to be free, or for the next game.
+- `the room is full`, or `the game has already started, with every place taken`: wait for a place to be free, or for the next game.
 - `cannot connect to the other players`: you reached the host, but not one of the other players, for about 7 seconds. Use Tailscale between the two of you.
 - `this game's state is too big to join during it`: for a few games, join only before the host starts.
+
+**`no answer from the host`**, joining by address: check the address, and that the host is waiting. From outside the host's network, an address works only with [Tailscale](#tailscale).
 
 **`lost the connection, and could not join again`**: the room is gone (the host left), or the connection is still down.
 
@@ -161,21 +163,21 @@ When a direct connection doesn't work:
 
 ### Report a problem
 
-Pick the game, then **Report a Problem**: the browser opens a short form, with no account needed, already filled in with the game, the version, the system and the room log of the last online game with it (the last lines of each player, if it's long). Write what happened, and send it: the answers aren't public.
+Pick the game, then **Report a Problem**: the browser opens a short form, with no account needed, already filled in with the game, the version, the system and the room log of the last online game with it (the last lines of each player, if it's long). Write what happened, and send it: the answers aren't public. It works for a problem playing alone too, then without a log.
 
-Every online game writes a room log in `Documents/Coinmates` (on a Mac, `~/Library/Logs/Coinmates`): who joined and left, the connections, the desyncs, and why it ended. Each player's log also has the other players' notes, so one report is enough for the whole room.
+Every online game writes a room log in `Documents/Coinmates` (on a Mac, `~/Library/Logs/Coinmates`): who joined and left, the connections, the desyncs, and why it ended, without anybody's address. Each player's log also has the other players' notes, so one report is enough for the whole room. Only the last 10 room logs are kept, of all games: report before playing much more.
 
 ## Artwork in Steam (optional)
 
 Only if you added Coinmates to Steam, on any system: Steam has no pictures for the games added by hand, and shows a grey cover. To give Coinmates its own, once (on the Steam Deck, in Desktop Mode):
 
-![Cover, wide cover, and the top of the game's page](netplay/steam/preview.png)
+![The artwork, the wide artwork, and the background and logo at the top of the game's page](netplay/steam/preview.png)
 
 1. Download [coinmates-steam-art.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-steam-art.zip), and extract it.
 2. Open Steam, then the *Library*.
-3. **Cover**: right click on Coinmates in the list on the left → *Manage* → *Set custom artwork* → `coinmates-cover.png`.
-4. **Top of the page**: open Coinmates' page, right click on the empty band at the top → *Set Custom Background* → `coinmates-hero.png`; right click there again → *Set Custom Logo* → `coinmates-logo.png`.
-5. **Wide cover**, if Steam shows Coinmates in a wide box, as in *Recent Games*: right click on it → *Manage* → *Set custom artwork* → `coinmates-wide.png`.
+3. **Artwork**: right click on Coinmates in the list on the left → *Manage* → *Set custom artwork* → `coinmates-artwork.png`.
+4. **Top of the page**: open Coinmates' page, right click on the empty band at the top → *Set Custom Background* → `coinmates-background.png`; right click there again → *Set Custom Logo* → `coinmates-logo.png`.
+5. **Wide artwork**, if Steam shows Coinmates in a wide box, as in *Recent Games*: right click on it → *Manage* → *Set custom artwork* → `coinmates-artwork-wide.png`.
 
 ## Build from source
 

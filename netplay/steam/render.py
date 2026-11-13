@@ -226,12 +226,12 @@ def tag(cx, top, u, anchor='middle', most=1e9):
 
 art = {}
 b, wl = logo(300, 500, 20, most=540)
-art['cover'] = svg(600, 900, background(600, 900, 300, 300) + emblem(140, 110, 320) + b
+art['artwork'] = svg(600, 900, background(600, 900, 300, 300) + emblem(140, 110, 320) + b
                    + players(300, 640, 8) + tag(300, 760, 5, most=540) + scanlines(600, 900))
 b, wl = logo(320, 110, 20, 'start', most=570)
-art['wide'] = svg(920, 430, background(920, 430, 160, 215) + emblem(20, 95, 250) + b
+art['artwork-wide'] = svg(920, 430, background(920, 430, 160, 215) + emblem(20, 95, 250) + b
                   + players(322, 250, 7, 'start') + tag(322, 335, 5, 'start', most=570) + scanlines(920, 430))
-art['hero'] = svg(1920, 620, background(1920, 620, 960, 310) + scanlines(1920, 620))
+art['background'] = svg(1920, 620, background(1920, 620, 960, 310) + scanlines(1920, 620))
 b, wl = logo(340, 90, 30, 'start', most=900)
 art['logo'] = svg(1280, 360, emblem(10, 30, 300) + b + players(342, 280, 7, 'start'))
 for key, text in art.items():
@@ -239,7 +239,7 @@ for key, text in art.items():
     open(path + '.svg', 'w').write(text)
     subprocess.run(['rsvg-convert', path + '.svg', '-o', path + '.png'], check=True)
 p = lambda key: os.path.join(here, f'coinmates-{key}.png')
-subprocess.run(['magick', '-background', '#f6f6f8', p('cover'), '(', p('wide'), p('hero'), '-resize', '920x',
+subprocess.run(['magick', '-background', '#f6f6f8', p('artwork'), '(', p('artwork-wide'), p('background'), '-resize', '920x',
                 '-splice', '0x20', '-append', ')', '-splice', '20x0', '+append', '-resize', '760x', os.path.join(here, 'preview.png')], check=True)
 
 icon = os.path.join(here, '..', 'flatpak', 'io.github.mcerina.Coinmates.svg')
