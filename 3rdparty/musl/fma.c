@@ -1,9 +1,27 @@
-/* fma and fmaf, exact on every system, which CORE-MATH calls on x86-64: the CPU's instruction where
-   there is one, as the C libraries do, else musl's (src/math/fma.c, src/math/fmaf.c). Both exact,
-   so the same bits. musl's code is unchanged but for its names, a_clz_64 as __builtin_clzll and no
-   FENV_ACCESS pragma: it isn't needed, the rounding is always to nearest.
+/* fma and fmaf, exact on every system, which CORE-MATH calls: the CPU's instruction where there is
+   one, as the C libraries do, else musl's (src/math/fma.c, src/math/fmaf.c). Both exact, so the
+   same bits. The instruction written out, not __builtin_fma: with -fmath-errno Apple's clang makes
+   that a call to fma, this one, which never returns. musl's code is unchanged but for its names,
+   a_clz_64 as __builtin_clzll and no FENV_ACCESS pragma: it isn't needed, the rounding is always to
+   nearest.
 
    musl: Copyright © 2005-2020 Rich Felker, et al. MIT license: see COPYRIGHT. */
+
+#if defined(__aarch64__)
+
+double fma(double x, double y, double z)
+{
+	__asm__("fmadd %d0, %d1, %d2, %d3" : "=w"(x) : "w"(x), "w"(y), "w"(z));
+	return x;
+}
+
+float fmaf(float x, float y, float z)
+{
+	__asm__("fmadd %s0, %s1, %s2, %s3" : "=w"(x) : "w"(x), "w"(y), "w"(z));
+	return x;
+}
+
+#else
 
 #pragma GCC diagnostic ignored "-Wparentheses"
 
@@ -218,8 +236,9 @@ static float musl_fmaf(float x, float y, float z)
 }
 
 #if defined(__x86_64__)
-__attribute__((target("fma"))) static double cpu_fma(double x, double y, double z) { return __builtin_fma(x, y, z); }
-__attribute__((target("fma"))) static float cpu_fmaf(float x, float y, float z) { return __builtin_fmaf(x, y, z); }
+#include <immintrin.h>
+__attribute__((target("fma"))) static double cpu_fma(double x, double y, double z) { return _mm_cvtsd_f64(_mm_fmadd_sd(_mm_set_sd(x), _mm_set_sd(y), _mm_set_sd(z))); }
+__attribute__((target("fma"))) static float cpu_fmaf(float x, float y, float z) { return _mm_cvtss_f32(_mm_fmadd_ss(_mm_set_ss(x), _mm_set_ss(y), _mm_set_ss(z))); }
 #endif
 
 double fma(double x, double y, double z)
@@ -239,3 +258,5 @@ float fmaf(float x, float y, float z)
 #endif
 	return musl_fmaf(x, y, z);
 }
+
+#endif
