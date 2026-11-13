@@ -34,8 +34,9 @@ permissions:
 env:
   MAKEOPTS: SUBTARGET=coinmates USE_QTDEBUG=0
   ARCH: -fsanitize=bounds -fsanitize-undefined-trap-on-error
-  # Not in MAME's CI: ccache, kept between runs (also failed ones), so that a try after a small
-  # change takes minutes, not an hour. The sloppiness lets it cache with precompiled headers.
+  # Not in MAME's CI: ccache, kept between runs (also failed ones; not cancelled ones, often empty,
+  # which would be the newest), so that a try after a small change takes minutes, not an hour. The
+  # sloppiness lets it cache with precompiled headers.
   CCACHE_DIR: ${{ github.workspace }}/.ccache
   CCACHE_MAXSIZE: 2G
   CCACHE_SLOPPINESS: pch_defines,time_macros,include_file_mtime,include_file_ctime
@@ -69,7 +70,7 @@ jobs:
         restore-cache: false
         save-cache: false
     - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      if: always()
+      if: ${{ !cancelled() }}
       with:
         path: .flatpak-builder/ccache
         key: flatpak-ccache-${{ github.sha }}
@@ -129,7 +130,7 @@ jobs:
         OVERRIDE_CXX: ccache g++
       run: make -j4 $MAKEOPTS USE_SDL3=1 ARCHOPTS="$ARCH -D_GLIBCXX_ASSERTIONS -fstack-protector-strong -D_FORTIFY_SOURCE=2 -fuse-ld=lld" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd,) NEW_GIT_VERSION=$(netplay/version.sh)
     - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      if: always()
+      if: ${{ !cancelled() }}
       with:
         path: .ccache
         key: ccache-windows-${{ github.sha }}
@@ -190,7 +191,7 @@ jobs:
         OVERRIDE_CXX: ccache clang++
       run: make -j$(sysctl -n hw.ncpu) SDL_FRAMEWORK_PATH=$PWD/sdl $MAKEOPTS ARCHOPTS="$ARCH -mmacosx-version-min=11.0 -D_LIBCPP_HARDENING_MODE=_LIBCPP_HARDENING_MODE_FAST" SOURCES=$(grep -v '^#' netplay/sources.txt | paste -sd, -) NEW_GIT_VERSION=$(netplay/version.sh)
     - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
-      if: always()
+      if: ${{ !cancelled() }}
       with:
         path: .ccache
         key: ccache-${{ matrix.zip }}-${{ github.sha }}
