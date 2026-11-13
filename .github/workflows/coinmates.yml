@@ -240,7 +240,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "Coinmates ${GITHUB_REF_NAME#v}"
         --notes "Built from $GITHUB_SHA." coinmates-windows.zip coinmates-macos.zip coinmates-macos-intel.zip
-        coinmates-steam-art.zip
+        coinmates-steam-art.zip src/netplay/flatpak/coinmates.flatpakref
 
   # Discover would bring Linux the update at once: it waits for an approval in the environment
   # github-pages, given when the draft release is published, or never for a dropped one
