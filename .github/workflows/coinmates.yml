@@ -1,7 +1,8 @@
 name: Coinmates
 
 # The builds of a release: Linux (flatpak), Windows (a folder to unzip) and macOS (an app for Apple
-# silicon, one for Intel). A tag v* makes a draft release with them, and publishes the flatpak in
+# silicon, one for Intel). A tag v* makes a draft release with them and their SHA256SUMS (a moved tag
+# replaces the files of its release), and publishes the flatpak in
 # Coinmates' flatpak repository on GitHub Pages; a push to a ci/* branch only builds, to try.
 # The default branch only builds too, at every push, to keep the caches for the tags: a tag sees
 # only its own and the default branch's. The schedule covers the weeks without a push, as GitHub
@@ -246,12 +247,19 @@ jobs:
         merge-multiple: true
     - name: Steam artwork
       run: zip -j coinmates-steam-art.zip src/netplay/steam/coinmates-*.png
-    - name: Draft release
+    - name: Release
       env:
         GH_TOKEN: ${{ github.token }}
-      run: gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "Coinmates ${GITHUB_REF_NAME#v}"
-        --notes "Built from $GITHUB_SHA." coinmates-windows.zip coinmates-macos.zip coinmates-macos-intel.zip
-        coinmates-steam-art.zip src/netplay/flatpak/coinmates.flatpakref
+      run: |
+        cp src/netplay/flatpak/coinmates.flatpakref .
+        files="coinmates-windows.zip coinmates-macos.zip coinmates-macos-intel.zip coinmates-steam-art.zip coinmates.flatpakref"
+        sha256sum $files > SHA256SUMS
+        if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+          gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber $files SHA256SUMS
+        else
+          gh release create "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --draft --title "Coinmates ${GITHUB_REF_NAME#v}" \
+            --notes "Built from $GITHUB_SHA." $files SHA256SUMS
+        fi
 
   # Discover would bring Linux the update at once: it waits for an approval in the environment
   # github-pages, given when the draft release is published, or never for a dropped one. Not after
