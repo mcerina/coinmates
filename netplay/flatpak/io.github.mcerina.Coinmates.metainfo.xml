@@ -83,6 +83,18 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
+    <release version="1.4.0" date="2026-11-14">
+      <description>
+        <p>Saves where EmuDeck keeps MAME's. Every player needs this version: it can't play with 1.3.0.</p>
+        <ul>
+          <li>High scores, service menu settings and saved states are in Emulation/saves/mame, shared with EmuDeck's MAME</li>
+          <li>Controller files in Emulation/storage/mame/ctrlr; on Linux and Mac the mouse buttons are the first fire buttons, as EmuDeck sets them</li>
+          <li>On Linux and the Steam Deck the room logs are with Coinmates' settings, and the app sees only the Emulation folder and the SD cards and other drives</li>
+          <li>On Windows the room logs are in the logs folder next to coinmates.exe, and the audio latency is EmuDeck's</li>
+          <li>The release has the SHA256SUMS of its files</li>
+        </ul>
+      </description>
+    </release>
     <release version="1.3.0" date="2026-11-13">
       <description>
         <p>The other players measure how late each player's inputs reach them, and the input delay follows that instead of the round trip. Every player needs this version: it can't play with 1.2.0.</p>
