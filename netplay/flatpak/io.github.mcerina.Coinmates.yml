@@ -17,9 +17,10 @@ finish-args:
   - --socket=fallback-x11
   - --socket=pulseaudio
   - --device=all                       # controllers
-  - --filesystem=home/Emulation:ro     # the ROMs, where EmuDeck keeps them
-  - --filesystem=/run/media:ro         # or on an SD card
-  - --filesystem=xdg-documents/Coinmates:create   # the room logs
+  # where EmuDeck keeps ROMs and saves, in the home or on an SD card. EmuDeck gives its emulators
+  # the whole disk (flatpak override --filesystem=host): not us, as joiners load others' states
+  - --filesystem=home/Emulation
+  - --filesystem=/run/media
 modules:
   - name: mame
     buildsystem: simple

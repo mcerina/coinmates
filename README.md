@@ -35,6 +35,7 @@ ROMs are not included. Coinmates looks for them in the `Emulation` folder of you
 | Games | `~/Emulation/roms/arcade` |
 | BIOS | there, or in `~/Emulation/bios` or `~/Emulation/bios/mame` |
 | Samples | `~/Emulation/storage/mame/samples` |
+| Saves: high scores, service menu settings, states | `~/Emulation/saves/mame`, shared with EmuDeck's MAME |
 
 If you don't have it, create `Emulation/roms/arcade` and put the zips there (the Mac version creates it at the first start). On Linux and the Steam Deck, `Emulation` can also be on an SD card or another drive, under `/run/media`. On Windows, if it is elsewhere, change the paths in `coinmates.ini`, next to `coinmates.exe`.
 
@@ -125,7 +126,7 @@ Online, the menu doesn't pause the game: the others play on while your character
 
 Only who knows the room code: every packet is signed with a key made from it. Typing the host's address instead of the code works only on the same local network (on a hotel's Wi-Fi, strangers too) or when both are on Tailscale.
 
-When you join, the host's machine state is loaded on yours, and MAME isn't made to load states from people who want to harm you: **play with people you know**. On Linux and the Steam Deck, Coinmates runs in the flatpak sandbox: of your files, it sees only the `Emulation` folder and the SD cards and other drives, which it can't change, and `Documents/Coinmates` for the room logs.
+When you join, the host's machine state is loaded on yours, and MAME isn't made to load states from people who want to harm you: **play with people you know**. On Linux and the Steam Deck, Coinmates runs in the flatpak sandbox: of your files, it sees only the `Emulation` folder and the SD cards and other drives, for the ROMs and the saves.
 
 ## Troubleshooting
 
@@ -163,7 +164,7 @@ When a direct connection doesn't work:
 
 Pick the game, then **Report a Problem**: the browser opens a short form, with no account needed, already filled in with the game, the version, the system and the room log of the last online game with it (the last lines of each player, if it's long). Write what happened, and send it: the answers aren't public. It works for a problem playing alone too, then without a log.
 
-One report is enough for the whole room. The room logs are in `Documents/Coinmates` (on a Mac, `~/Library/Logs/Coinmates`), without anybody's address; only the last 10 are kept, so report soon.
+One report is enough for the whole room. The room logs are with Coinmates' settings: `~/.var/app/io.github.mcerina.Coinmates/config/coinmates/logs` on Linux and the Steam Deck, `logs` in the `Coinmates` folder on Windows, `~/Library/Logs/Coinmates` on a Mac. They have nobody's address; only the last 10 are kept, so report soon.
 
 ## Artwork in Steam (optional)
 

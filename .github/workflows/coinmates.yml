@@ -145,6 +145,7 @@ jobs:
         cp 3rdparty/core-math/LICENSE $d/CORE-MATH-LICENSE
         cp 3rdparty/musl/COPYRIGHT $d/MUSL-COPYRIGHT
         cp netplay/flatpak/EMUDECK-LICENSE $d/
+        # EmuDeck's controls of Linux: its Windows ones have no controller buttons for the menu
         cp netplay/flatpak/default.cfg $d/cfg/
         printf 'last_used_filter Available\n' > $d/ui.ini
         ldd coinmates.exe | awk '$3 ~ /ucrt64/ { print $3 }' | xargs -r cp -t $d/

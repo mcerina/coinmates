@@ -1,17 +1,19 @@
 #!/bin/sh
 # Coinmates for macOS: the options of the Linux launcher (netplay/flatpak/launch), which follows
-# EmuDeck: the ROMs in ~/Emulation/roms/arcade, the settings in ~/Library/Application Support/Coinmates,
-# the room logs of the online games in ~/Library/Logs/Coinmates: in Documents, macOS would ask first.
+# EmuDeck: the ROMs in ~/Emulation/roms/arcade, NVRAM and states in ~/Emulation/saves/mame. EmuDeck
+# has no Mac: the settings in ~/Library/Application Support/Coinmates, the room logs of the online
+# games in ~/Library/Logs/Coinmates, where macOS keeps the apps' logs.
 app=$(cd "$(dirname "$0")/.." && pwd)
 emu=$HOME/Emulation
 dir=$HOME/Library/Application\ Support/Coinmates
 logs=$HOME/Library/Logs/Coinmates
-mkdir -p "$dir/cfg" "$dir/nvram" "$emu/roms/arcade" "$logs"
+mkdir -p "$dir/cfg" "$emu/roms/arcade"
 [ -f "$dir/cfg/default.cfg" ] || cp "$app/Resources/default.cfg" "$dir/cfg/"
 [ -f "$dir/ui.ini" ] || echo "last_used_filter Available" > "$dir/ui.ini"
 cd "$dir" || exit 1
 exec "$app/MacOS/coinmates" -rompath "$emu/roms/arcade;$emu/bios;$emu/bios/mame" \
-  -samplepath "$emu/storage/mame/samples" -artpath "$emu/storage/mame/artwork" \
-  -cfg_directory "$dir/cfg" -nvram_directory "$dir/nvram" -netplay_logs "$logs" \
+  -samplepath "$emu/storage/mame/samples" -artpath "$emu/storage/mame/artwork" -ctrlrpath "$emu/storage/mame/ctrlr" \
+  -nvram_directory "$emu/saves/mame/saves" -state_directory "$emu/saves/mame/states" \
+  -cfg_directory "$dir/cfg" -netplay_logs "$logs" -mouse \
   -joystickprovider sdljoy -joystick_deadzone 0.3 -joystick_saturation 0.85 -video opengl -samplerate 48000 \
   "$@"

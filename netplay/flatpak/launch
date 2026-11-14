@@ -3,9 +3,12 @@
 #   flatpak run io.github.mcerina.Coinmates   (the list of games: play alone, host or join)
 # Paths and options as EmuDeck sets them for MAME (functions/EmuScripts/emuDeckMAME.sh and
 # configs/mame of github.com/dragoonDorise/EmuDeck): ROMs in Emulation/roms/arcade, then
-# Emulation/bios and Emulation/bios/mame, samples and artwork in Emulation/storage/mame;
-# Emulation is in the home or on an SD card. $NP_ROMS replaces the ROM paths. More options for the game
-# go in NP_ARGS, e.g. --env=NP_ARGS="-verbose", or after the command.
+# Emulation/bios and Emulation/bios/mame, samples, artwork and ctrlr in Emulation/storage/mame,
+# NVRAM and states in Emulation/saves/mame, shared with EmuDeck's MAME; Emulation is in the home
+# or on an SD card. Not EmuDeck's: cheat and plugins (we ship none), its ini folders (a player's
+# own options for a game could make a different machine from the others'), cfg (EmuDeck leaves
+# it in MAME's own folder, so ours stays in Coinmates' own). $NP_ROMS replaces the ROM paths.
+# More options for the game go in NP_ARGS, e.g. --env=NP_ARGS="-verbose", or after the command.
 # Everybody plays with the player 1 controls, whatever seat they get.
 set -e
 for e in "$HOME/Emulation" /run/media/*/Emulation /run/media/*/*/Emulation; do
@@ -15,9 +18,10 @@ done
 EMU=${EMU:-$HOME/Emulation}
 NP_ROMS=${NP_ROMS:-$EMU/roms/arcade;$EMU/bios;$EMU/bios/mame}
 dir=${XDG_CONFIG_HOME:-$HOME/.config}/coinmates
-# the room logs of the online games, to attach to a problem report
-logs=$(xdg-user-dir DOCUMENTS 2>/dev/null || echo "$HOME/Documents")/Coinmates
-mkdir -p "$dir/cfg" "$dir/nvram" "$logs"
+# the room logs of the online games, to attach to a problem report: with the settings, as EmuDeck
+# keeps its own logs (~/.config/EmuDeck/logs)
+logs=$dir/logs
+mkdir -p "$dir/cfg"
 # the controller as EmuDeck sets it for MAME: its default.cfg, and its joystick options
 [ -f "$dir/cfg/default.cfg" ] || cp /app/share/coinmates/default.cfg "$dir/cfg/"
 # the list starts with the games whose ROMs are there, not the 3000 systems of the drivers
@@ -30,6 +34,7 @@ export SDL_VIDEO_X11_WMCLASS=io.github.mcerina.Coinmates SDL_VIDEO_WAYLAND_WMCLA
 # Deck: at every start of a game. Steam + X still opens it, to type a room code
 export SDL_ENABLE_SCREEN_KEYBOARD=0
 exec coinmates -rompath "$NP_ROMS" -samplepath "$EMU/storage/mame/samples" -artpath "$EMU/storage/mame/artwork" \
-  -cfg_directory "$dir/cfg" -nvram_directory "$dir/nvram" -netplay_logs "$logs" \
+  -ctrlrpath "$EMU/storage/mame/ctrlr" -nvram_directory "$EMU/saves/mame/saves" -state_directory "$EMU/saves/mame/states" \
+  -cfg_directory "$dir/cfg" -netplay_logs "$logs" -mouse \
   -joystickprovider sdljoy -joystick_deadzone 0.3 -joystick_saturation 0.85 -video opengl -samplerate 48000 \
   $NP_ARGS "$@"
