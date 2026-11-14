@@ -401,9 +401,9 @@ void *const ITEMREF_ALONE = reinterpret_cast<void *>(1);
 void *const ITEMREF_HOST = reinterpret_cast<void *>(2);
 void *const ITEMREF_JOIN = reinterpret_cast<void *>(3);
 void *const ITEMREF_REPORT = reinterpret_cast<void *>(4);
-constexpr int HOST_PORT = 7000;     // where players at home look for the host
 constexpr size_t JOIN_SIZE = 21;    // or an address, for a VPN: 100.101.102.103:7000
 
+// a code, or an address: host names have hyphens
 bool room_char(char32_t ch)
 {
 	return (ch < 0x80) && (std::isalnum(int(ch)) || (ch == '-') || (ch == '.') || (ch == ':'));
@@ -454,7 +454,7 @@ bool menu_select_launch::netplay_selection::handle(event const *ev)
 		if (ev->itemref == ITEMREF_ALONE)
 			launch(0, std::string());
 		else if (ev->itemref == ITEMREF_HOST)
-			launch(HOST_PORT, std::string());
+			launch(rollback_session::LAN_PORT, std::string());
 		else if (ev->itemref == ITEMREF_REPORT)
 		{
 			rollback_session::report_problem(machine().options(), m_driver);
@@ -511,15 +511,14 @@ std::string menu_select_launch::netplay_selection::join_target() const
 	return rollback_session::join_target(m_room);
 }
 
-// a code as the host sees it, whatever the case and the hyphen typed
+// a code as the host sees it, whatever the case typed; an address as it is
 std::string menu_select_launch::netplay_selection::shown() const
 {
 	if (m_room.find_first_of(".:") != std::string::npos)
 		return m_room;
-	std::string code;
-	for (char c : m_room)
-		if (c != '-')
-			code += char(std::toupper(u8(c)));
+	std::string code(m_room);
+	for (char &c : code)
+		c = char(std::toupper(u8(c)));
 	return code;
 }
 

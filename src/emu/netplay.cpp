@@ -126,7 +126,6 @@ constexpr u32 MESH_TIMEOUT_MS = HOST_FOUND_MS + 4 * (HELLO_MS + FAR_RTT_MS / 2) 
 // has no limit
 constexpr u32 JOIN_TIMEOUT_MS = 25000;
 constexpr u32 RESYNC_RETRY_MS = 5000;   // a choice: asks again if the repairing state hasn't come
-constexpr u16 LAN_PORT = 7000;
 // the home network, for computers with a firewall that lets in only answers: every address in 8 s;
 // packets to absent ones wait 3 s for ARP in the socket's buffer: 100 KB of its 213 KB, no send failed
 constexpr u32 SWEEP_MS = 250;
@@ -517,10 +516,12 @@ private:
 	void lobby_tick();
 	void run_frame();
 	void stall_tick();
+	void game_tick();
 	void finish_lobby();
 
 	void advance_confirmed(s64 boundary);
 	void hash_frame(s64 frame);
+	hash_entry &hash_for(s64 frame);
 	void compare_hash(hash_entry &entry);
 	void request_resync(s64 boundary, s64 frame);
 	void apply_received_state(s64 boundary);
@@ -1105,8 +1106,7 @@ void netplay_session::corrupt_state(s64 frame)
 	size_t fault = 0;
 	for_each_item([&] (std::string_view name, size_t offset, size_t size)
 	{
-		const bool skipped = std::find(m_hash_skip.begin(), m_hash_skip.end(), std::make_pair(offset, size)) != m_hash_skip.end();
-		if (!fault && !skipped && name.substr(0, 7) == "memory/" && size >= 256)
+		if (!fault && !hash_skips(offset, size) && name.substr(0, 7) == "memory/" && size >= 256)
 			fault = offset + size / 2;
 	});
 	s.data[fault] ^= 0x5a;
@@ -1286,10 +1286,7 @@ void netplay_session::lobby_tick()
 		if (m_rx.ready)
 		{
 			// the machine is loaded when the session starts
-			slot &s = slot_for(m_rx.frame);
-			s.data = std::move(m_rx.raw);
-			s.frame = m_rx.frame;
-			s.valid = true;
+			set_slot(m_rx.frame, std::move(m_rx.raw));
 			m_rx.ready = false;
 			m_cur = m_rx.frame;
 		}
@@ -1424,15 +1421,8 @@ void netplay_session::run_frame()
 	}
 
 	serve_resyncs();
-	tick_transfers();
-	flush_simulated();
 	update_time_sync(b);
-	check_timeouts();
-	if (m_host)
-		join_tick();
-	else
-		client_game_tick(now_ms());
-
+	game_tick();
 	if (now_ms() - m_notes_ms >= NOTES_WRITE_MS)
 		write_notes();
 	if (m_test_frames && b >= m_test_frames)
@@ -1449,6 +1439,14 @@ void netplay_session::stall_tick()
 	// upload, whose queue then held the inputs for seconds
 	if (now_ms() - m_inputs_ms >= u32(m_frame_ms))
 		send_inputs();
+	game_tick();
+	m_machine.osd().update(true);
+	m_stall_ticks += osd_ticks() - start;
+}
+
+// after each frame, and while waiting for the others
+void netplay_session::game_tick()
+{
 	tick_transfers();
 	flush_simulated();
 	check_timeouts();
@@ -1456,8 +1454,6 @@ void netplay_session::stall_tick()
 		join_tick();
 	else
 		client_game_tick(now_ms());
-	m_machine.osd().update(true);
-	m_stall_ticks += osd_ticks() - start;
 }
 
 
@@ -1503,14 +1499,21 @@ void netplay_session::hash_frame(s64 frame)
 	}
 	else
 	{
-		hash_entry &e = m_hashes[(frame / m_hash_every) % m_hashes.size()];
-		if (e.frame != frame)
-			e = hash_entry();
-		e.frame = frame;
+		hash_entry &e = hash_for(frame);
 		e.mine = h;
 		e.have_mine = true;
 		compare_hash(e);
 	}
+}
+
+// emptied if it held an older frame
+netplay_session::hash_entry &netplay_session::hash_for(s64 frame)
+{
+	hash_entry &e = m_hashes[(frame / m_hash_every) % m_hashes.size()];
+	if (e.frame != frame)
+		e = hash_entry();
+	e.frame = frame;
+	return e;
 }
 
 void netplay_session::compare_hash(hash_entry &e)
@@ -1557,10 +1560,7 @@ void netplay_session::apply_received_state(s64 boundary)
 	else if (slot_valid(frame))
 		log_differences(slot_for(frame).data, m_rx.raw);
 
-	slot &s = slot_for(frame);
-	s.data = std::move(m_rx.raw);
-	s.frame = frame;
-	s.valid = true;
+	set_slot(frame, std::move(m_rx.raw));
 	m_floor = frame;
 	m_confirmed = frame;
 	m_rollback_to = NO_FRAME;
@@ -1579,8 +1579,7 @@ void netplay_session::log_differences(const std::vector<u8> &mine, const std::ve
 	int count = 0;
 	for_each_item([&] (const char *name, size_t offset, size_t size)
 	{
-		const bool skipped = std::find(m_hash_skip.begin(), m_hash_skip.end(), std::make_pair(offset, size)) != m_hash_skip.end();
-		if (!skipped && memcmp(&mine[offset], &host[offset], size) && count++ < 16)
+		if (!hash_skips(offset, size) && memcmp(&mine[offset], &host[offset], size) && count++ < 16)
 			names.append(names.empty() ? "" : ";").append(name);
 	});
 	note("%d items differ: %s", count, names);
@@ -2694,10 +2693,7 @@ void netplay_session::handle_hash(packet_reader &in)
 	const u64 hash = in.get<u64>();
 	if (!in.ok() || frame <= m_floor || frame % m_hash_every != 0)
 		return;
-	hash_entry &e = m_hashes[(frame / m_hash_every) % m_hashes.size()];
-	if (e.frame != frame)
-		e = hash_entry();
-	e.frame = frame;
+	hash_entry &e = hash_for(frame);
 	e.host = hash;
 	e.have_host = true;
 	compare_hash(e);

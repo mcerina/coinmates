@@ -18,6 +18,7 @@
 
 #pragma once
 
+#include <algorithm>
 #include <memory>
 #include <string>
 #include <string_view>
@@ -37,6 +38,8 @@ public:
 	// the players a system has controls for (at most MAX_PLAYERS count in a session)
 	static int system_players(const ioport_list &ports);
 	static constexpr int MAX_PLAYERS = 4;
+	// the host's from the menu, where players at home look for it, and a joiner's if free
+	static constexpr u16 LAN_PORT = 7000;
 
 	// why the last session ended, for the system list to show once; empty if it wasn't told
 	static std::string take_end_message() { return std::exchange(s_end_message, std::string()); }
@@ -85,6 +88,13 @@ protected:
 	slot &slot_for(s64 frame) { return m_slots[frame % m_slots.size()]; }
 	bool slot_valid(s64 frame) { const slot &s = slot_for(frame); return s.frame == frame && s.valid; }
 	bool save_slot(s64 frame);
+	void set_slot(s64 frame, std::vector<u8> &&data)
+	{
+		slot &s = slot_for(frame);
+		s.data = std::move(data);
+		s.frame = frame;
+		s.valid = true;
+	}
 	// a state that doesn't fit this machine, which only a broken or hostile host sends: nothing to play on
 	void load_state(const std::vector<u8> &state)
 	{
@@ -93,6 +103,10 @@ protected:
 	}
 	void compute_hash_skip(std::string_view exclude, bool skip_samples);
 	u64 state_hash(const std::vector<u8> &state) const;
+	bool hash_skips(size_t offset, size_t size) const
+	{
+		return std::find(m_hash_skip.begin(), m_hash_skip.end(), std::make_pair(offset, size)) != m_hash_skip.end();
+	}
 
 	// calls f(name, offset, size) for every item of a save state
 	template <typename F> void for_each_item(F &&f) const
