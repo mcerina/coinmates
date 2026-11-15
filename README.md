@@ -94,9 +94,10 @@ Finding the room takes a few seconds, without any server of ours: the players fi
 
 ### Leaving and joining again
 
-When a player leaves, the others play on: that player's character stands still, and the screen says `Player 2 left`. The place stays free. If the host leaves, the game ends for everybody.
+When a player leaves, the others play on: that player's character stands still, and the screen says `Player 2 left`. One who vanishes without quitting (a crash, a lost connection) holds the game for about 5 seconds first. The place stays free. The host too can leave: the next player hosts, and the host can join again like the others. Only before the game starts does the host leaving close the room.
 
-- **You lost the connection**: Coinmates notices in about 10 seconds, and joins again by itself: the screen says `Lost the connection: joining room K7QM3XD again`.
+- **You lost the connection**: Coinmates notices in about 5 seconds, and joins again by itself: the screen says `Lost the connection: joining room K7QM3XD again`. If both sides played on meanwhile, the one with fewer players joins the other once the connection is back.
+- **Your computer went to sleep**: when it wakes up, it joins again by itself.
 - **You quit, or Coinmates closed**: open it again, pick the same game, and *Join Online* with the same room code.
 - **Somebody new** can take a free place the same way.
 
@@ -147,7 +148,7 @@ When a game ends because of a problem, the reason shows up in red in the list of
 
 **`no answer from the host`**, joining by address: check the address, and that the host is waiting.
 
-**`lost the connection, and could not join again`**: the room is gone (the host left), or the connection is still down.
+**`lost the connection, and could not join again`**: the room is gone (everybody left), or the connection is still down.
 
 **The controls react a little late**: with a friend far away, or a computer that can't keep up, the inputs wait a few frames on purpose, so that the game doesn't slow down.
 

@@ -117,9 +117,10 @@ constexpr u32 WELCOME_MS = FAR_RTT_MS + HELLO_MS;
 // the longest silence measured was 0.62 s, plus a lost packet: a player silent this long is having
 // trouble
 constexpr u32 SILENT_MS = 700;
-// the others wait this long for one who went silent: an outage of seconds (wifi roaming, a cell
-// change) didn't show in the measures, so this is a choice; one who quits says so (send_bye)
-constexpr u32 PEER_TIMEOUT_MS = 10000;
+// the others wait for one who went silent as long as joining again takes once the network is back:
+// then nobody loses more than twice the outage. Measured from 3.3 s (dino on a LAN) to 5.34 s
+// (nbahangt's 2.2 MB state at FAR_RTT_MS), 3 s of it BACK_FRAMES. One who quits says so (send_bye)
+constexpr u32 PEER_TIMEOUT_MS = 5400;
 // from the host's welcome of a newcomer: the others find it on the trackers (HOST_FOUND_MS), then
 // meet, hear that they're heard, and tell the host: four trips, each maybe waiting a hello; one lost
 constexpr u32 MESH_TIMEOUT_MS = HOST_FOUND_MS + 4 * (HELLO_MS + FAR_RTT_MS / 2) + HELLO_MS;
