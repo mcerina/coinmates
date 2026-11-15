@@ -1,15 +1,12 @@
 name: Coinmates
 
-# The builds of a release: Linux (flatpak), Windows (a folder to unzip) and macOS (an app for Apple
-# silicon, one for Intel). A tag v* makes a draft release with them and their SHA256SUMS (a moved tag
-# replaces the files of its release), and publishes the flatpak in
-# Coinmates' flatpak repository on GitHub Pages; a push to a ci/* branch only builds, to try.
-# The default branch only builds too, at every push, to keep the caches for the tags: a tag sees
-# only its own and the default branch's. The schedule covers the weeks without a push, as GitHub
-# drops a cache unused for 7 days: at most 3 days apart, 5 if a run is lost; not at the top of the
-# hour, when GitHub delays or drops scheduled runs.
-# Each is built as MAME is there: Linux as Flathub's MAME, which EmuDeck installs (the manifest);
-# Windows and macOS as MAME's own CI (.github/workflows/ci-windows.yml, ci-macos.yml upstream).
+# The builds of a release, each as MAME is built there: Linux as Flathub's MAME, which EmuDeck installs
+# (the manifest); Windows and macOS as MAME's own CI (ci-windows.yml, ci-macos.yml upstream). A tag v*
+# makes a draft release (a moved tag replaces its files) and publishes the flatpak repository on GitHub
+# Pages; a ci/* branch only builds. The default branch builds too, at every push and on a schedule, to
+# keep the caches for the tags, which see only their own and the default branch's: GitHub drops a cache
+# unused for 7 days (at most 3 days apart, 5 if a run is lost; not at the top of the hour, when GitHub
+# delays or drops scheduled runs).
 
 on:
   push:
@@ -25,13 +22,9 @@ permissions:
 # Not as MAME's CI: the actions and the Linux image by their hash, not by a branch or a tag that
 # whoever controls them can move, as the release job can write to the repository. Updated by hand.
 
-# What we add to MAME's options, everywhere, as in the flatpak manifest. SUBTARGET and SOURCES build
-# only the drivers of the co-op games. USE_QTDEBUG=0 leaves out the debugger, which would stop the
-# game for one player only. -fsanitize=bounds, trapping, stops the game at an array index out of
-# bounds instead of writing in memory: a joiner loads the host's state, and drivers use its values as
-# indices. On Windows and macOS also the checks of the C++ library, and on Windows the stack protector
-# and FORTIFY, which on Linux come with the SDK's CFLAGS and on macOS with Apple's tools.
-# NEW_GIT_VERSION is the Coinmates version, which all the players in a room must share.
+# What we add to MAME's options, everywhere, for the reasons in the flatpak manifest; on Windows and
+# macOS also the C++ library's checks, and on Windows the stack protector and FORTIFY, which Linux gets
+# from the SDK's CFLAGS and macOS from Apple's tools.
 env:
   MAKEOPTS: SUBTARGET=coinmates USE_QTDEBUG=0
   ARCH: -fsanitize=bounds -fsanitize-undefined-trap-on-error

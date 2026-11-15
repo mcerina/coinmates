@@ -117,10 +117,9 @@ constexpr u32 WELCOME_MS = FAR_RTT_MS + HELLO_MS;
 // the longest silence measured was 0.62 s, plus a lost packet: a player silent this long is having
 // trouble
 constexpr u32 SILENT_MS = 700;
-// the others wait for one who went silent as long as joining again takes once the network is back:
-// then nobody loses more than twice the outage. Measured from 3.3 s (dino on a LAN) to 5.34 s
-// (nbahangt's 2.2 MB state at 0.6 s round trip; 4.7 s at FAR_RTT_MS), 3 s of it BACK_FRAMES; and a
-// hello lost. One who quits says so (send_bye)
+// the others wait for one who went silent as long as joining again takes once the network is back,
+// so that nobody loses more than twice the outage: at worst 5.34 s measured (a 2.2 MB state at 0.6 s
+// round trip, 3 s of it BACK_FRAMES), and a hello lost. One who quits says so (send_bye)
 constexpr u32 PEER_TIMEOUT_MS = 5600;
 // from the host's welcome of a newcomer: the others find it on the trackers (HOST_FOUND_MS), then
 // meet, hear that they're heard, and tell the host: four trips, each maybe waiting a hello; one lost
@@ -1454,7 +1453,6 @@ void netplay_session::stall_tick()
 	m_stall_ticks += osd_ticks() - start;
 }
 
-// after each frame, and while waiting for the others
 void netplay_session::game_tick()
 {
 	tick_transfers();
@@ -2960,8 +2958,6 @@ void netplay_session::handle_chunk_ack(int sender, packet_reader &in)
 	}
 }
 
-// the host drops whoever is gone; a client waits for its word a little longer, and takes its place
-// if the host is gone and it comes first (successor)
 void netplay_session::check_timeouts()
 {
 	// a computer that stopped as long (asleep) has no say: the others went on without it. The clock of
@@ -3026,7 +3022,7 @@ int netplay_session::playing() const
 	return players;
 }
 
-// a host's says how its game goes: two hosts of one game meet so (handle_packet)
+// a host's tells how many play: of two hosts of one game, after a split, the smaller joins the other (handle_packet)
 packet_writer netplay_session::punch() const
 {
 	packet_writer out(P_PUNCH, m_session, m_me);

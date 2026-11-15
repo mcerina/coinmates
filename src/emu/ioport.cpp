@@ -2196,8 +2196,8 @@ void ioport_manager::frame_update()
 	for (auto &port : m_portlist)
 		port.second->update_defvalue(false);
 
-	// loop over all input ports; a session sets them from the players' inputs, the local ones from
-	// every port's sample
+	// loop over all input ports; a session sets them once all are sampled: the local player's
+	// controls may be in a later port than its seat's
 	for (auto &port : m_portlist)
 		port.second->frame_update();
 	if (rollback_session *const rollback = machine().rollback())

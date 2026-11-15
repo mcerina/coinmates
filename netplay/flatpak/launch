@@ -2,13 +2,11 @@
 # Coinmates, the command of the flatpak:
 #   flatpak run io.github.mcerina.Coinmates   (the list of games: play alone, host or join)
 # Paths and options as EmuDeck sets them for MAME (functions/EmuScripts/emuDeckMAME.sh and
-# configs/mame of github.com/dragoonDorise/EmuDeck): ROMs in Emulation/roms/arcade, then
-# Emulation/bios and Emulation/bios/mame, samples, artwork and ctrlr in Emulation/storage/mame,
-# NVRAM and states in Emulation/saves/mame, shared with EmuDeck's MAME; Emulation is in the home
-# or on an SD card. Not EmuDeck's: cheat and plugins (we ship none), its ini folders (a player's
-# own options for a game could make a different machine from the others'), cfg (EmuDeck leaves
-# it in MAME's own folder, so ours stays in Coinmates' own). $NP_ROMS replaces the ROM paths.
-# More options for the game go in NP_ARGS, e.g. --env=NP_ARGS="-verbose", or after the command.
+# configs/mame of github.com/dragoonDorise/EmuDeck), in the Emulation folder in the home or on an SD
+# card; NVRAM and states shared with EmuDeck's MAME. Not EmuDeck's: cheat and plugins (we ship none),
+# its ini folders (a player's own options for a game could make a different machine from the
+# others'), cfg (EmuDeck's stays in MAME's own folder, ours in Coinmates'). $NP_ROMS replaces the ROM
+# paths; more options in NP_ARGS (--env=NP_ARGS="-verbose") or after the command.
 # Everybody plays with the player 1 controls, whatever seat they get.
 set -e
 for e in "$HOME/Emulation" /run/media/*/Emulation /run/media/*/*/Emulation; do

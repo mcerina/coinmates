@@ -59,7 +59,7 @@ public:
 	// before the configuration is saved: the DIP switches of this player, not the host's
 	virtual void restore_settings() { }
 
-	virtual void frame_inputs() = 0;    // ioport frame_update (end of the current frame), after the OS sample of every port: sets them
+	virtual void frame_inputs() = 0;    // ioport frame_update, once every port is sampled: sets them
 	virtual void post_timeslice() = 0;  // main loop, after every timeslice
 
 protected:
