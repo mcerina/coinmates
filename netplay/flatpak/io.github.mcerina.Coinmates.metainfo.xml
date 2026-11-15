@@ -83,10 +83,15 @@
   <content_rating type="oars-1.1"/>
 
   <releases>
-    <release version="1.4.0" date="2026-11-14">
+    <release version="1.4.0" date="2026-11-15">
       <description>
-        <p>Saves where EmuDeck keeps MAME's. Every player needs this version: it can't play with 1.3.0.</p>
+        <p>The game goes on when the host leaves, and saves where EmuDeck keeps MAME's. Every player needs this version: it can't play with 1.3.0.</p>
         <ul>
+          <li>When the host quits or its connection drops, the next player hosts and the game goes on; the host can join again like the others</li>
+          <li>When a player vanishes without quitting, the others wait about 6 seconds instead of 10</li>
+          <li>When the connection drops, each side plays on; once it is back, the side with fewer players joins the other by itself</li>
+          <li>After the computer sleeps, it joins the game again by itself</li>
+          <li>On a computer fast enough to redo frames, the input delay goes down to 0: a frame less, on the same network too</li>
           <li>High scores, service menu settings and saved states are in Emulation/saves/mame, shared with EmuDeck's MAME</li>
           <li>Controller files in Emulation/storage/mame/ctrlr; on Linux and Mac the mouse buttons are the first fire buttons, as EmuDeck sets them</li>
           <li>On Linux and the Steam Deck the room logs are with Coinmates' settings, and the app sees only the Emulation folder and the SD cards and other drives</li>
