@@ -10,6 +10,8 @@ Co-op arcade games with your friends, online. Coinmates is based on [MAME](https
 - **Players at home** find each other even without internet.
 - **A controller or the keyboard**, ready to play. Folders and controls are the ones [EmuDeck](https://www.emudeck.com/) uses for MAME: if you have EmuDeck, there is nothing to set up. It isn't needed.
 
+Why another netplay, when RetroArch and Fightcade exist? [How Coinmates compares](COMPARISON.md), with its weak points too.
+
 ## Install
 
 **Linux and Steam Deck.** Download [coinmates.flatpakref](https://mcerina.github.io/coinmates/coinmates.flatpakref) (on the Steam Deck, in Desktop Mode) and open it from *Downloads*: Discover, or your system's software center, shows Coinmates: *Install*. Or in a terminal:
