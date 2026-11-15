@@ -119,8 +119,9 @@ constexpr u32 WELCOME_MS = FAR_RTT_MS + HELLO_MS;
 constexpr u32 SILENT_MS = 700;
 // the others wait for one who went silent as long as joining again takes once the network is back:
 // then nobody loses more than twice the outage. Measured from 3.3 s (dino on a LAN) to 5.34 s
-// (nbahangt's 2.2 MB state at FAR_RTT_MS), 3 s of it BACK_FRAMES. One who quits says so (send_bye)
-constexpr u32 PEER_TIMEOUT_MS = 5400;
+// (nbahangt's 2.2 MB state at 0.6 s round trip), 3 s of it BACK_FRAMES; and a hello lost. One who
+// quits says so (send_bye)
+constexpr u32 PEER_TIMEOUT_MS = 5600;
 // from the host's welcome of a newcomer: the others find it on the trackers (HOST_FOUND_MS), then
 // meet, hear that they're heard, and tell the host: four trips, each maybe waiting a hello; one lost
 constexpr u32 MESH_TIMEOUT_MS = HOST_FOUND_MS + 4 * (HELLO_MS + FAR_RTT_MS / 2) + HELLO_MS;
@@ -541,6 +542,7 @@ private:
 	void flush_simulated(bool all = false);
 	void handle_packet(const udp::endpoint &from, const u8 *data, size_t size);
 	void handle_hello(const udp::endpoint &from, packet_reader &in, const util::sha1_t &key);
+	void start_meet(const util::sha1_t &secret);
 	void meet_tick(u32 now, bool poll);
 	void other_socket();
 	const char *room_not_found() const;
@@ -825,13 +827,7 @@ netplay_session::netplay_session(running_machine &machine, bool host)
 	m_socket.set_option(asio::socket_base::broadcast(true), ec);
 	const util::sha1_t secret = room_secret(m_room);
 	m_key = room_hash("key", secret);
-
-	if (!m_room.empty() && *machine.options().netplay_trackers())
-	{
-		netplay_meet::hash hash;
-		std::copy_n(room_hash("meet", secret).m_raw, hash.size(), hash.begin());
-		m_meet = std::make_unique<netplay_meet>(m_socket, machine.options().netplay_trackers(), machine.options().netplay_stun(), hash);
-	}
+	start_meet(secret);
 
 	if (screen_device *screen = screen_device_enumerator(machine.root_device()).first())
 		m_frame_ms = float(screen->frame_period().as_double() * 1000.0);
@@ -1079,6 +1075,10 @@ void netplay_session::resim_frame_done()
 {
 	save_slot(m_cur);
 	m_resim_frames++;
+	// a long one (catching up after joining, a repair) mustn't look like trouble (SILENT_MS), even with
+	// a packet lost
+	if (now_ms() - m_inputs_ms >= SILENT_MS / 2)
+		send_inputs();
 }
 
 void netplay_session::rollback(s64 boundary)
@@ -1669,6 +1669,16 @@ void netplay_session::update_time_sync(s64 boundary)
 //  the firewalls
 //-------------------------------------------------
 
+void netplay_session::start_meet(const util::sha1_t &secret)
+{
+	const emu_options &options = m_machine.options();
+	if (m_room.empty() || !*options.netplay_trackers())
+		return;
+	netplay_meet::hash hash;
+	std::copy_n(room_hash("meet", secret).m_raw, hash.size(), hash.begin());
+	m_meet = std::make_unique<netplay_meet>(m_socket, options.netplay_trackers(), options.netplay_stun(), hash);
+}
+
 void netplay_session::meet_tick(u32 now, bool poll)
 {
 	if (!m_meet)
@@ -1871,10 +1881,15 @@ void netplay_session::handle_packet(const udp::endpoint &from, const u8 *data, s
 		// does the same. Not for a host that said it left, if this comes late
 		const int mine = playing();
 		if (m_host && host && session == m_session && m_phase == phase::RUNNING && sender < m_players && sender != m_me
-				&& !m_peers[sender].connected && !m_peers[sender].bye && (players > mine || (players == mine && sender < m_me)))
+				&& !m_peers[sender].connected && !m_peers[sender].bye)
 		{
-			m_peers[sender].endpoint = from;
-			lose_connection("the game goes on with the other players: joining them");
+			if (players > mine || (players == mine && sender < m_me))
+			{
+				m_peers[sender].endpoint = from;
+				lose_connection("the game goes on with the other players: joining them");
+			}
+			else
+				send(from, punch()); // it may have come back from another address, which only it knows
 		}
 		return;
 	}
@@ -2255,7 +2270,7 @@ void netplay_session::punch_tick(u32 now)
 		sweep_lan(punch());
 		// and to those who left: after a split of the network, the other part's host meets this one so
 		for (int p = 0; p < m_players; p++)
-			if (p != m_me && m_peers[p].left != NO_FRAME && m_peers[p].endpoint.port())
+			if (p != m_me && m_peers[p].left != NO_FRAME && !m_peers[p].bye && m_peers[p].endpoint.port())
 				send(m_peers[p].endpoint, punch());
 	}
 	punch_peers(now);
@@ -2410,13 +2425,14 @@ void netplay_session::handle_roster(packet_reader &in)
 		peer &pr = m_peers[p];
 		if (p == m_me || p == m_lead)
 			continue;
-		if (pl.state != 0 && pr.left == NO_FRAME)
+		// also another frame, from a host that took over without the roster of the one before
+		if (pl.state != 0 && pl.left != pr.left)
 		{
-			const s64 from = std::min(m_known[p], pl.left) + 1;
+			const s64 known = pr.left == NO_FRAME ? m_known[p] : pr.left;
 			for (s64 f = pl.first; f <= pl.left; f++)
-				if (f > m_known[p])
+				if (f > known)
 					m_input[p][f % INPUT_RING] = pl.inputs[f - pl.first];
-			player_left(p, pl.left, from);
+			player_left(p, pl.left, std::min(known, pl.left) + 1);
 		}
 		if (pl.state == 2)
 			m_others.push_back(pl.who); // we connect to it, as in the lobby
@@ -2505,8 +2521,11 @@ void netplay_session::handle_welcome(const udp::endpoint &from, packet_reader &i
 
 	if (m_room.empty())
 	{
+		// typed the host's address: on the trackers too, in case it hosts one day
 		m_room = clean_room(room);
-		m_key = room_hash("key", room_secret(m_room));
+		const util::sha1_t secret = room_secret(m_room);
+		m_key = room_hash("key", secret);
+		start_meet(secret);
 	}
 	m_host_endpoint = from;
 	m_players = players;
@@ -2942,7 +2961,7 @@ void netplay_session::check_timeouts()
 	// the date, as the others may not count the time asleep
 	const auto now = std::chrono::system_clock::now();
 	const auto last = std::exchange(m_tick_time, now);
-	if (last != decltype(last)() && now - last >= std::chrono::milliseconds(PEER_TIMEOUT_MS))
+	if (last != decltype(last)() && now - last >= std::chrono::milliseconds(PEER_TIMEOUT_MS) && playing() > 1)
 	{
 		lose_connection("this computer stopped for a while");
 		return;
@@ -2955,8 +2974,12 @@ void netplay_session::check_timeouts()
 			new_lead(m_me);
 		if (m_host && gone(p))
 			drop_player(p);
-		else if (!m_host && now_ms() - m_peers[p].last_rx_ms >= PEER_TIMEOUT_MS + FAR_RTT_MS / 2 + u32(m_frame_ms)) // the host's word, maybe lost once
+		// the host's word: the silence reaches it, then its roster comes here (two ways), maybe lost once
+		else if (!m_host && now_ms() - m_peers[p].last_rx_ms >= PEER_TIMEOUT_MS + FAR_RTT_MS + 2 * u32(m_frame_ms))
+		{
 			lose_connection(p == m_lead ? "no packets from the host" : util::string_format("no packets from player %d", p + 1).c_str());
+			return;
+		}
 	}
 }
 
@@ -2965,12 +2988,12 @@ bool netplay_session::gone(int player) const
 	return m_peers[player].bye || now_ms() - m_peers[player].last_rx_ms >= PEER_TIMEOUT_MS;
 }
 
-// the next host, once the host is gone: the first place still playing. All count the same, but for a
-// player gone only for some (that one then joins again)
+// the next host, once the host is gone: the first place playing (not one still joining). All count the
+// same, but for a player gone only for some (that one then joins again)
 int netplay_session::successor() const
 {
 	for (int p = 0; p < m_players; p++)
-		if (p == m_me || (p != m_lead && m_peers[p].connected && !gone(p)))
+		if (p == m_me || (p != m_lead && m_peers[p].connected && !gone(p) && m_known[p] >= m_peers[p].back))
 			return p;
 	return m_me;
 }
@@ -2985,6 +3008,7 @@ void netplay_session::new_lead(int player)
 	m_roster_version = 0;           // its count; the clients' inputs say whose roster they got
 	m_rx = transfer_in();           // a state from the host that left: the next one numbers its own
 	m_resync_pending = false;
+	m_send_ack = false;
 }
 
 int netplay_session::playing() const
@@ -3044,7 +3068,7 @@ void netplay_session::end_session(const char *reason, bool rejoin)
 // once playing, or joining during the game: its place stays free, to take again
 void netplay_session::lose_connection(const char *reason)
 {
-	end_session(reason, m_phase == phase::RUNNING || m_back);
+	end_session(reason, m_phase == phase::RUNNING || m_back || m_rejoining);
 }
 
 
