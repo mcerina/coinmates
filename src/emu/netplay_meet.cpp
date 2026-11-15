@@ -141,6 +141,18 @@ void netplay_meet::tick(u32 now, bool poll)
 		return;
 	if (!m_poll_ms || (poll && now - *m_poll_ms >= POLL_MS))
 	{
+		// STUN again too, for the next announce: a router may give the socket another port (it started
+		// again, or lost the line)
+		if (m_poll_ms)
+		{
+			m_stun_ms = now;
+			for (server &s : m_stun)
+			{
+				s.seen.reset();
+				new_stun_transaction(s);
+				ask_stun(s);
+			}
+		}
 		m_poll_ms = now;
 		for (server &t : m_trackers)
 			ask_tracker(t);
@@ -163,6 +175,7 @@ void netplay_meet::restart()
 		t.connected = false;
 		t.announced = false;
 	}
+	m_public.reset();
 	m_stun_ms.reset();
 	m_stun_first_ms.reset();
 	m_poll_ms.reset();
@@ -248,6 +261,7 @@ bool netplay_meet::handle(const udp::endpoint &from, const u8 *data, size_t size
 			if (type == 0x0020 && length >= 8 && i + 12 <= size && data[i + 5] == 1)
 			{
 				s.seen = udp::endpoint(asio::ip::address_v4(get_u32be(data + i + 8) ^ STUN_MAGIC), get_u16be(data + i + 6) ^ (STUN_MAGIC >> 16));
+				m_public = s.seen;
 				if (std::find(m_own.begin(), m_own.end(), *s.seen) == m_own.end())
 				{
 					m_own.push_back(*s.seen);
@@ -302,9 +316,8 @@ bool netplay_meet::handle(const udp::endpoint &from, const u8 *data, size_t size
 
 std::optional<u16> netplay_meet::public_port() const
 {
-	for (const server &s : m_stun)
-		if (s.seen)
-			return s.seen->port();
+	if (m_public)
+		return m_public->port();
 	if ((m_stun.empty() && m_stun_ready) || (m_stun_first_ms && m_now - *m_stun_first_ms >= STUN_GIVE_UP_MS))
 		return m_socket.local_endpoint().port();
 	return std::nullopt;
@@ -312,10 +325,7 @@ std::optional<u16> netplay_meet::public_port() const
 
 std::optional<asio::ip::udp::endpoint> netplay_meet::public_address() const
 {
-	for (const server &s : m_stun)
-		if (s.seen)
-			return s.seen;
-	return std::nullopt;
+	return m_public;
 }
 
 bool netplay_meet::symmetric_nat() const

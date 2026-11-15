@@ -74,7 +74,7 @@ private:
 		udp::endpoint endpoint;
 		u32 transaction = 0;            // of the request waiting for an answer; 0, none: a forged answer can't come after
 		u8 stun_transaction[12] = { };
-		std::optional<udp::endpoint> seen; // STUN: our address as it saw it
+		std::optional<udp::endpoint> seen; // STUN: our address as it saw it, in the last round of requests
 		bool connected = false;         // tracker: the connection id is valid
 		u64 connection = 0;
 		u32 connected_ms = 0;
@@ -100,6 +100,7 @@ private:
 	u32 m_key = 0;
 	std::mt19937 m_rng;
 	std::vector<udp::endpoint> m_own;       // of every socket, as STUN saw them
+	std::optional<udp::endpoint> m_public;  // the newest that STUN saw
 	std::vector<udp::endpoint> m_peers;
 	bool m_changed = false;
 	bool m_answered = false;
