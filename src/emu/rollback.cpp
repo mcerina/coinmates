@@ -80,7 +80,6 @@ void rollback_session::map_inputs()
 {
 	for (auto &p : m_machine.ioport().ports())
 	{
-		m_port_index[p.second.get()] = int(m_ports.size());
 		m_ports.push_back(p.second.get());
 		std::vector<port_field> &fields = m_port_fields.emplace_back();
 		for (ioport_field &field : p.second->fields())

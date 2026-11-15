@@ -2176,10 +2176,6 @@ void ioport_manager::frame_update()
 {
 	auto profile = g_profiler.start(PROFILER_INPUT);
 
-	rollback_session *const rollback = machine().rollback();
-	if (rollback)
-		rollback->frame_inputs_begin();
-
 	// record/playback information about the current frame
 	attotime curtime = machine().time();
 	playback_frame(curtime);
@@ -2200,13 +2196,14 @@ void ioport_manager::frame_update()
 	for (auto &port : m_portlist)
 		port.second->update_defvalue(false);
 
-	// loop over all input ports
+	// loop over all input ports; a session sets them from the players' inputs, the local ones from
+	// every port's sample
+	for (auto &port : m_portlist)
+		port.second->frame_update();
+	if (rollback_session *const rollback = machine().rollback())
+		rollback->frame_inputs();
 	for (auto &port : m_portlist)
 	{
-		port.second->frame_update();
-		if (rollback)
-			rollback->frame_inputs_port(*port.second);
-
 		// handle playback/record
 		playback_port(*port.second.get());
 		record_port(*port.second.get());

@@ -58,8 +58,7 @@ public:
 	sync_test(running_machine &machine, const char *config);
 	~sync_test() { finish(); }
 
-	void frame_inputs_begin() override { if (!m_done) m_frame_ended = true; }
-	void frame_inputs_port(ioport_port &port) override;
+	void frame_inputs() override;
 	void post_timeslice() override;
 
 private:
@@ -159,10 +158,13 @@ sync_test::sync_test(running_machine &machine, const char *config)
 }
 
 
-void sync_test::frame_inputs_port(ioport_port &port)
+void sync_test::frame_inputs()
 {
-	if (!m_done)
-		port.live().digital = compose(m_port_index[&port], m_cur + 1);
+	if (m_done)
+		return;
+	m_frame_ended = true;
+	for (size_t i = 0; i < m_ports.size(); i++)
+		m_ports[i]->live().digital = compose(int(i), m_cur + 1);
 }
 
 bool sync_test::timed_save(s64 frame)

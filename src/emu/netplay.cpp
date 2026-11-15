@@ -101,7 +101,6 @@ constexpr size_t TAG_SIZE = 8;
 constexpr u32 AUDIO_DELAY_MS = 60;      // 3 frames of the 20 ms sound updates: rollbacks within it aren't heard; ~125 ms isn't noticed
 constexpr u32 FAR_RTT_MS = netplay_meet::FAR_RTT_MS;
 constexpr int WINDOW = 10;              // a choice: the most frames predicted, and redone; a PC redoes 9 within a frame in all games but one
-constexpr int MIN_DELAY = 1;            // a frame's own inputs are all read only after its ports are set
 // a choice: samples of each estimate of the load (frames: 1 s) and of how late packets come (packets:
 // 1 s); the load's sixth slowest, so that a slow frame now and then (a state compressed for a joiner)
 // doesn't count; the packets' second slowest (about the 97th percentile over 1-2 s), so that one alone doesn't
@@ -382,8 +381,7 @@ public:
 	bool in_session() const override { return m_phase == phase::RUNNING; }
 	std::string status() const override;
 	void restore_settings() override;
-	void frame_inputs_begin() override;
-	void frame_inputs_port(ioport_port &port) override;
+	void frame_inputs() override;
 	void post_timeslice() override;
 
 private:
@@ -503,7 +501,7 @@ private:
 
 	u32 best(int player, s64 frame) const;
 	float delay_need() const;
-	void publish_inputs(s64 frame);
+	void publish_inputs(s64 frame, u32 sample);
 	void measure_load();
 	void predict(s64 frame);
 	u32 frame_word(int player, s64 frame) const override { return player == m_me ? m_input[player][frame % INPUT_RING] : m_used[player][frame % INPUT_RING]; }
@@ -626,8 +624,7 @@ private:
 	u32 m_resync_ms = 0;
 
 	float m_frame_ms = 1000.0f / 60;
-	int m_delay = MIN_DELAY;        // of our inputs
-	u32 m_sample = 0;               // the local inputs of the frame running
+	int m_delay = 0;                // of our inputs
 	int m_redo = 0;
 	std::vector<float> m_busy;      // ms of the last frames, besides waiting and redoing
 	double m_load_mark = 0;         // ms so far besides waiting and redoing
@@ -709,7 +706,7 @@ private:
 	u64 m_rollbacks = 0, m_resim_frames = 0, m_unrecoverable = 0;
 	u64 m_desyncs = 0, m_resyncs = 0, m_hash_compared = 0, m_slow_frames = 0;
 	osd_ticks_t m_stall_ticks = 0;
-	int m_delay_max = MIN_DELAY, m_delay_changes = 0;
+	int m_delay_max = 0, m_delay_changes = 0;
 	u64 m_delay_histogram[32] = { };
 	u64 m_depth_histogram[64] = { };
 	double m_rollback_ms_total = 0, m_rollback_ms_max = 0;
@@ -940,34 +937,30 @@ u32 netplay_session::best(int player, s64 frame) const
 	return m_input[player][std::min(frame, m_known[player]) % INPUT_RING];
 }
 
-void netplay_session::frame_inputs_begin()
+void netplay_session::frame_inputs()
 {
 	if (m_phase == phase::BOOT)
 		m_frame_ended = true;
 	if (m_phase != phase::RUNNING)
+	{
+		for (ioport_port *port : m_ports)
+			port->live().digital = 0;
 		return;
+	}
 
 	m_frame_ended = true;
 	const s64 f = m_cur + 1;
 	predict(f);
 	if (!m_resim)
-		m_sample = m_bot_seed ? bot_word(m_bot_seed, m_me, f + m_delay) : 0;
-}
-
-void netplay_session::frame_inputs_port(ioport_port &port)
-{
-	if (m_phase != phase::RUNNING)
 	{
-		port.live().digital = 0;
-		return;
+		// the local player's controls are those of player 1, whatever seat they got
+		u32 sample = m_bot_seed ? bot_word(m_bot_seed, m_me, f + m_delay) : 0;
+		for (size_t i = 0; i < m_ports.size() && !m_bot_seed; i++)
+			sample |= local_word(int(i), m_ports[i]->live().digital);
+		publish_inputs(f, sample);
 	}
-
-	const int index = m_port_index[&port];
-	const s64 f = m_cur + 1;
-	// the local player's controls are those of player 1, whatever seat they got
-	if (!m_resim && !m_bot_seed)
-		m_sample |= local_word(index, port.live().digital);
-	port.live().digital = compose(index, f);
+	for (size_t i = 0; i < m_ports.size(); i++)
+		m_ports[i]->live().digital = compose(int(i), f);
 }
 
 // frames of delay for every other player to redo at most what it can within a frame, and to have
@@ -993,12 +986,12 @@ float netplay_session::delay_need() const
 // the inputs read for this frame count for frame + m_delay. They go with their frame, so each player
 // has a delay of its own: it grows by giving the frame skipped the inputs before, and shrinks by
 // dropping inputs equal to those before, so nothing is lost
-void netplay_session::publish_inputs(s64 frame)
+void netplay_session::publish_inputs(s64 frame, u32 sample)
 {
 	const s64 last = frame - 1 + m_delay;
 	const u32 previous = m_input[m_me][last % INPUT_RING];
 	const float need = delay_need();
-	if (m_delay > MIN_DELAY && need <= m_delay - 1 && m_sample == previous)
+	if (m_delay > 0 && need <= m_delay - 1 && sample == previous)
 	{
 		m_delay--;
 		m_delay_changes++;
@@ -1014,7 +1007,7 @@ void netplay_session::publish_inputs(s64 frame)
 			m_delay_changes++;
 			m_delay_max = std::max(m_delay_max, m_delay);
 		}
-		m_input[m_me][(frame + m_delay) % INPUT_RING] = m_sample;
+		m_input[m_me][(frame + m_delay) % INPUT_RING] = sample;
 	}
 	m_known[m_me] = frame + m_delay;
 	m_delay_histogram[std::min<size_t>(m_delay, std::size(m_delay_histogram) - 1)]++;
@@ -1393,7 +1386,6 @@ void netplay_session::run_frame()
 {
 	s64 b = ++m_cur;
 	measure_load();
-	publish_inputs(b);
 	const bool saved = save_slot(b);
 	if (b == m_test_fault)
 		corrupt_state(b);

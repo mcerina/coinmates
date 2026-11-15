@@ -22,7 +22,6 @@
 #include <memory>
 #include <string>
 #include <string_view>
-#include <unordered_map>
 #include <utility>
 #include <vector>
 
@@ -60,9 +59,8 @@ public:
 	// before the configuration is saved: the DIP switches of this player, not the host's
 	virtual void restore_settings() { }
 
-	virtual void frame_inputs_begin() = 0;                 // ioport frame_update start (end of the current frame)
-	virtual void frame_inputs_port(ioport_port &port) = 0; // per port, after the OS sample
-	virtual void post_timeslice() = 0;                     // main loop, after every timeslice
+	virtual void frame_inputs() = 0;    // ioport frame_update (end of the current frame), after the OS sample of every port: sets them
+	virtual void post_timeslice() = 0;  // main loop, after every timeslice
 
 protected:
 	static inline std::string s_end_message;
@@ -141,7 +139,6 @@ protected:
 	bool m_resim_draw = false;      // draw every frame while resimulating
 	size_t m_state_size = 0;
 	std::vector<ioport_port *> m_ports;
-	std::unordered_map<ioport_port *, int> m_port_index;
 	std::vector<ioport_type> m_bit_type;
 	std::vector<std::pair<size_t, size_t>> m_hash_skip; // (offset, size) of items left out of the hash, in order
 	u64 m_saves_failed = 0;
