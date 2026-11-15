@@ -119,8 +119,8 @@ constexpr u32 WELCOME_MS = FAR_RTT_MS + HELLO_MS;
 constexpr u32 SILENT_MS = 700;
 // the others wait for one who went silent as long as joining again takes once the network is back:
 // then nobody loses more than twice the outage. Measured from 3.3 s (dino on a LAN) to 5.34 s
-// (nbahangt's 2.2 MB state at 0.6 s round trip), 3 s of it BACK_FRAMES; and a hello lost. One who
-// quits says so (send_bye)
+// (nbahangt's 2.2 MB state at 0.6 s round trip; 4.7 s at FAR_RTT_MS), 3 s of it BACK_FRAMES; and a
+// hello lost. One who quits says so (send_bye)
 constexpr u32 PEER_TIMEOUT_MS = 5600;
 // from the host's welcome of a newcomer: the others find it on the trackers (HOST_FOUND_MS), then
 // meet, hear that they're heard, and tell the host: four trips, each maybe waiting a hello; one lost
@@ -1075,10 +1075,12 @@ void netplay_session::resim_frame_done()
 {
 	save_slot(m_cur);
 	m_resim_frames++;
-	// a long one (catching up after joining, a repair) mustn't look like trouble (SILENT_MS), even with
-	// a packet lost
-	if (now_ms() - m_inputs_ms >= SILENT_MS / 2)
+	// a long one (catching up after joining, a repair) mustn't look like silence: as often as playing
+	if (now_ms() - m_inputs_ms >= u32(m_frame_ms))
+	{
 		send_inputs();
+		flush_simulated();
+	}
 }
 
 void netplay_session::rollback(s64 boundary)
@@ -2178,7 +2180,7 @@ void netplay_session::drop_player(int player)
 void netplay_session::player_left(int player, s64 last, s64 from)
 {
 	peer &pr = m_peers[player];
-	pr.connected = false;
+	const bool was_playing = std::exchange(pr.connected, false);
 	pr.left = last;
 	m_known[player] = NO_FRAME;
 	for (s64 f = std::max(from, m_floor + 1); f <= m_cur; f++)
@@ -2187,6 +2189,9 @@ void netplay_session::player_left(int player, s64 last, s64 from)
 			m_rollback_to = std::min(m_rollback_to, f);
 			break;
 		}
+	// not again for a frame corrected by a new host, nor for a place empty before we joined
+	if (!was_playing)
+		return;
 	m_machine.popmessage("Player %d left\nThe room code is in the menu, to join again", player + 1);
 	note("player %d left after frame %d", player + 1, int(last));
 }
@@ -2443,6 +2448,8 @@ void netplay_session::handle_roster(packet_reader &in)
 				who.endpoint = met->second;
 			player_back(p, pl.from, pl.back, who);
 		}
+		else if (pl.state == 0)
+			pr.back = pl.back;  // another joining with us: not the next host until it plays (successor)
 	}
 }
 
