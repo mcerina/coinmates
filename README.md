@@ -22,6 +22,8 @@ flatpak install --from https://mcerina.github.io/coinmates/coinmates.flatpakref
 
 Its updates come with the others, in Discover's *Updates* (or `flatpak update`). On the Steam Deck, to have it in Game Mode, add it to Steam while still in Desktop Mode: Steam → *Games* → *Add a Non-Steam Game to My Library…* → tick **Coinmates** → *Add Selected Programs*; then give it [its artwork](#artwork-in-steam-optional).
 
+**Linux, without flatpak.** Download [coinmates-x86_64.AppImage](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-x86_64.AppImage), make it executable (in the file manager, *Properties* → *Permissions*; or `chmod +x coinmates-x86_64.AppImage`) and open it. It needs a system from 2021 or newer (glibc 2.34). To update, replace it with the new one. Unlike the flatpak, it has no sandbox: see [Who can join](#who-can-join).
+
 **Windows.** Download [coinmates-windows.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-windows.zip), unzip it where you like, and open `coinmates.exe` in the `Coinmates` folder. Windows doesn't know who made it, so the first time it says *Windows protected your PC*: *More info* → *Run anyway*. To update, unzip the new release over the old folder: each game's settings stay, while the controls set for all games, `ui.ini` and `coinmates.ini` go back to the release's.
 
 **Mac.** Download [coinmates-macos.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-macos.zip) for Apple silicon (M1 or newer), or [coinmates-macos-intel.zip](https://github.com/mcerina/coinmates/releases/latest/download/coinmates-macos-intel.zip) for an Intel Mac (Apple menu → *About This Mac* says which), open it, and drag **Coinmates** to Applications. It needs macOS 11 Big Sur or newer. It isn't signed by Apple, so the first time macOS refuses to open it: System Settings → *Privacy & Security* → *Open Anyway*. To update, replace it with the new one.
@@ -46,6 +48,7 @@ Every player needs **the same ROMs** for the game: the sets of MAME 0.289. When 
 | System | Command |
 |---|---|
 | Linux, Steam Deck | `flatpak run io.github.mcerina.Coinmates -verifyroms <game>` |
+| Linux, AppImage | `./coinmates-x86_64.AppImage -verifyroms <game>` |
 | Windows | in the `Coinmates` folder: `coinmates.exe -verifyroms <game>` |
 | Mac | `/Applications/Coinmates.app/Contents/MacOS/launch -verifyroms <game>` |
 
@@ -129,7 +132,7 @@ Online, the menu doesn't pause the game: the others play on while your character
 
 Only who knows the room code: every packet is signed with a key made from it. Typing the host's address instead of the code works only on the same local network (on a hotel's Wi-Fi, strangers too) or when both are on Tailscale.
 
-When you join, the host's machine state is loaded on yours, and MAME isn't made to load states from people who want to harm you: **play with people you know**. On Linux and the Steam Deck, Coinmates runs in the flatpak sandbox: of your files, it sees only the `Emulation` folder and the SD cards and other drives, for the ROMs and the saves.
+When you join, the host's machine state is loaded on yours, and MAME isn't made to load states from people who want to harm you: **play with people you know**. On Linux and the Steam Deck, the flatpak runs in a sandbox: of your files, it sees only the `Emulation` folder and the SD cards and other drives, for the ROMs and the saves. The AppImage, as the Windows and Mac versions, sees all your files.
 
 ## Troubleshooting
 
@@ -167,7 +170,7 @@ When a direct connection doesn't work:
 
 Pick the game, then **Report a Problem**: the browser opens a short form, with no account needed, already filled in with the game, the version, the system and the room log of the last online game with it (the last lines of each player, if it's long). Write what happened, and send it: the answers aren't public. It works for a problem playing alone too, then without a log.
 
-One report is enough for the whole room. The room logs are with Coinmates' settings: `~/.var/app/io.github.mcerina.Coinmates/config/coinmates/logs` on Linux and the Steam Deck, `logs` in the `Coinmates` folder on Windows, `~/Library/Logs/Coinmates` on a Mac. They have nobody's address; only the last 10 are kept, so report soon.
+One report is enough for the whole room. The room logs are with Coinmates' settings: `~/.var/app/io.github.mcerina.Coinmates/config/coinmates/logs` on Linux and the Steam Deck (`~/.config/coinmates/logs` with the AppImage), `logs` in the `Coinmates` folder on Windows, `~/Library/Logs/Coinmates` on a Mac. They have nobody's address; only the last 10 are kept, so report soon.
 
 ## Artwork in Steam (optional)
 
@@ -189,7 +192,7 @@ cd coinmates
 flatpak-builder --user --install --install-deps-from=flathub --force-clean build netplay/flatpak/io.github.mcerina.Coinmates.yml
 ```
 
-This builds only the drivers of the co-op games ([netplay/sources.txt](netplay/sources.txt)); the first build takes a while. The Windows and macOS builds are in [.github/workflows/coinmates.yml](.github/workflows/coinmates.yml).
+This builds only the drivers of the co-op games ([netplay/sources.txt](netplay/sources.txt)); the first build takes a while. The AppImage is built by [netplay/appimage/build.sh](netplay/appimage/build.sh), in a container of AlmaLinux 9; the Windows and macOS builds are in [.github/workflows/coinmates.yml](.github/workflows/coinmates.yml).
 
 How it works: [src/emu/rollback.cpp](src/emu/rollback.cpp) (saving, predicting and redoing frames) and [src/emu/netplay.cpp](src/emu/netplay.cpp) (rooms, players and the network).
 

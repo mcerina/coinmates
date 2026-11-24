@@ -1,19 +1,16 @@
 name: Coinmates
 
 # The builds of a release, each as MAME is built there: Linux as Flathub's MAME, which EmuDeck installs
-# (the manifest); Windows and macOS as MAME's own CI (ci-windows.yml, ci-macos.yml upstream). A tag v*
-# makes a draft release (a moved tag replaces its files) and publishes the flatpak repository on GitHub
-# Pages; a ci/* branch only builds. The default branch builds too, at every push and on a schedule, to
-# keep the caches for the tags, which see only their own and the default branch's: GitHub drops a cache
-# unused for 7 days (at most 3 days apart, 5 if a run is lost; not at the top of the hour, when GitHub
-# delays or drops scheduled runs).
+# (the manifest), and an AppImage (its script); Windows and macOS as MAME's own CI (ci-windows.yml,
+# ci-macos.yml upstream). A tag v* makes a draft release (a moved tag replaces its files) and publishes
+# the flatpak repository on GitHub Pages; a ci/* branch only builds. The default branch builds too, at
+# every push, for the caches of the tags, which see only their own and the default branch's (GitHub
+# drops a cache unused for 7 days: a tag after a quiet week builds cold).
 
 on:
   push:
     tags: ['v*']
     branches: ['ci/**', netplay-rollback]
-  schedule:
-  - cron: '17 3 * * 1,3,5'
   workflow_dispatch:
 
 permissions:
@@ -96,6 +93,39 @@ jobs:
       with:
         path: site
         retention-days: 30   # the longest an approval can wait (pages job)
+
+  appimage:
+    runs-on: ubuntu-latest
+    container:
+      image: docker.io/library/almalinux:9@sha256:1a53e1f464e0c45e33fa151792506425d07daed052ede38b106a3926f1a73019
+    # the job's own, as the container doesn't see the runner's paths
+    env:
+      CCACHE_DIR: ''
+    steps:
+    # git before the checkout, which would otherwise download the files without it, for netplay/version.sh
+    - run: dnf -y install git
+    - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      with:
+        persist-credentials: false
+    - uses: actions/cache/restore@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      with:
+        path: .ccache
+        key: ccache-appimage-${{ github.sha }}
+        restore-keys: ccache-appimage-
+    - name: Build
+      # the checkout belongs to the runner's user, not root: git refuses it otherwise
+      run: |
+        git config --global --add safe.directory "$PWD"
+        netplay/appimage/build.sh
+    - uses: actions/cache/save@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+      if: ${{ !cancelled() }}
+      with:
+        path: .ccache
+        key: ccache-appimage-${{ github.sha }}
+    - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+      with:
+        name: appimage
+        path: coinmates-x86_64.AppImage
 
   windows:
     runs-on: windows-latest
@@ -226,7 +256,7 @@ jobs:
 
   release:
     if: startsWith(github.ref, 'refs/tags/v')
-    needs: [linux, windows, macos]
+    needs: [linux, appimage, windows, macos]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -245,7 +275,7 @@ jobs:
         GH_TOKEN: ${{ github.token }}
       run: |
         cp src/netplay/flatpak/coinmates.flatpakref .
-        files="coinmates-windows.zip coinmates-macos.zip coinmates-macos-intel.zip coinmates-steam-art.zip coinmates.flatpakref"
+        files="coinmates-x86_64.AppImage coinmates-windows.zip coinmates-macos.zip coinmates-macos-intel.zip coinmates-steam-art.zip coinmates.flatpakref"
         sha256sum $files > SHA256SUMS
         if gh release view "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
           gh release upload "$GITHUB_REF_NAME" -R "$GITHUB_REPOSITORY" --clobber $files SHA256SUMS

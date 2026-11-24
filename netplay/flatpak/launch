@@ -1,5 +1,5 @@
 #!/bin/bash
-# Coinmates, the command of the flatpak:
+# Coinmates, the command of the flatpak and of the AppImage (its AppRun):
 #   flatpak run io.github.mcerina.Coinmates   (the list of games: play alone, host or join)
 # Paths and options as EmuDeck sets them for MAME (functions/EmuScripts/emuDeckMAME.sh and
 # configs/mame of github.com/dragoonDorise/EmuDeck), in the Emulation folder in the home or on an SD
@@ -9,6 +9,8 @@
 # paths; more options in NP_ARGS (--env=NP_ARGS="-verbose") or after the command.
 # Everybody plays with the player 1 controls, whatever seat they get.
 set -e
+# its files are next to it: /app in the flatpak, usr in the AppImage
+here=$(dirname "$(readlink -f "$0")")
 for e in "$HOME/Emulation" /run/media/*/Emulation /run/media/*/*/Emulation; do
   [ -d "$e/roms/arcade" ] && { EMU=$e; break; }
 done
@@ -21,7 +23,7 @@ dir=${XDG_CONFIG_HOME:-$HOME/.config}/coinmates
 logs=$dir/logs
 mkdir -p "$dir/cfg"
 # the controller as EmuDeck sets it for MAME: its default.cfg, and its joystick options
-[ -f "$dir/cfg/default.cfg" ] || cp /app/share/coinmates/default.cfg "$dir/cfg/"
+[ -f "$dir/cfg/default.cfg" ] || cp "$here/../share/coinmates/default.cfg" "$dir/cfg/"
 # the list starts with the games whose ROMs are there, not the 3000 systems of the drivers
 [ -f "$dir/ui.ini" ] || echo "last_used_filter Available" > "$dir/ui.ini"
 cd "$dir"   # where the menu writes ui.ini and its other files
@@ -31,7 +33,7 @@ export SDL_VIDEO_X11_WMCLASS=io.github.mcerina.Coinmates SDL_VIDEO_WAYLAND_WMCLA
 # (src/osd/sdl3/window.cpp), and SDL3 then asks Steam for its keyboard when none is attached, as on the
 # Deck: at every start of a game. Steam + X still opens it, to type a room code
 export SDL_ENABLE_SCREEN_KEYBOARD=0
-exec coinmates -rompath "$NP_ROMS" -samplepath "$EMU/storage/mame/samples" -artpath "$EMU/storage/mame/artwork" \
+exec "$here/coinmates" -rompath "$NP_ROMS" -samplepath "$EMU/storage/mame/samples" -artpath "$EMU/storage/mame/artwork" \
   -ctrlrpath "$EMU/storage/mame/ctrlr" -nvram_directory "$EMU/saves/mame/saves" -state_directory "$EMU/saves/mame/states" \
   -cfg_directory "$dir/cfg" -netplay_logs "$logs" -mouse \
   -joystickprovider sdljoy -joystick_deadzone 0.3 -joystick_saturation 0.85 -video opengl -samplerate 48000 \
